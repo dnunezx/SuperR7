@@ -201,15 +201,30 @@ This section is updated as Phase 1 progresses.
 | Item | Result |
 | --- | --- |
 | Upstream repository | `davidgfnet/superfw` |
+| Fork | `dnunezx/superfw` |
 | Development branch | `feature/cover-art` |
 | Baseline commit | `cf09d09492525b84ac3bbd20db406805c7ce6242` |
+| Baseline measurement commit | `85673693ec3bd4ef1467104ac6603d6b7460bf4f` (documentation and CI only; firmware sources unchanged) |
 | Submodules | `apultra` checked out at `8f340057d7402c10da3d9c76c599f9ab83b8a22d` |
-| SD firmware build | Pending |
-| Host tests | Pending |
-| Final firmware size | Pending |
-| EWRAM usage | Pending |
-| IWRAM usage | Pending |
+| SD firmware build | Passed on GitHub Actions |
+| Host tests | Passed on GitHub Actions |
+| Final firmware size | 516,608 bytes of 524,288 bytes; 7,680 bytes (7.5 KiB) remaining |
+| Main firmware before compression | 217,100 bytes |
+| Main firmware after compression | 103,397 bytes |
+| EWRAM usage | 217,100 of 257,024 bytes (84.47%); 39,924 bytes remaining |
+| IWRAM usage | 11,144 of 32,768 bytes (34.01%); 21,624 bytes remaining |
 | Hardware smoke test | Pending |
+
+Baseline workflow runs:
+
+- [SD firmware build and artifacts](https://github.com/dnunezx/superfw/actions/runs/30858515467)
+- [Existing SuperFW host tests](https://github.com/dnunezx/superfw/actions/runs/30858515464)
+
+The final 512 KiB firmware image is the tighter constraint: only 7.5 KiB is
+currently unused. The cover implementation must therefore avoid a general image
+decoder and must track the final compressed image size on every change. The
+main executable has substantially more EWRAM headroom, so a fixed cover buffer
+and a small custom-format loader remain practical.
 
 ## Definition of done for the first release
 
