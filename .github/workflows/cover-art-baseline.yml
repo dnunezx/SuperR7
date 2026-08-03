@@ -1,0 +1,48 @@
+name: Cover art baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/cover-art
+
+jobs:
+  build-sd-baseline:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Install ARM build tools
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Build untouched SD firmware
+        run: |
+          make BOARD=sd clean
+          make BOARD=sd COMPRESSION_RATIO=10 2>&1 | tee baseline-build.log
+
+      - name: Record baseline measurements
+        run: |
+          {
+            echo "commit=$(git rev-parse HEAD)"
+            echo "superfw_gba_bytes=$(stat -c %s superfw.gba)"
+            echo "firmware_ewram_gba_bytes=$(stat -c %s firmware.ewram.gba)"
+            echo "firmware_ewram_comp_bytes=$(stat -c %s firmware.ewram.gba.comp)"
+            echo
+            arm-none-eabi-size firmware.ewram.elf
+          } | tee baseline-report.txt
+
+      - name: Upload baseline artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: superfw-sd-cover-art-baseline
+          path: |
+            superfw.gba
+            firmware.elf
+            firmware.ewram.elf
+            firmware.ewram.map
+            baseline-build.log
+            baseline-report.txt
