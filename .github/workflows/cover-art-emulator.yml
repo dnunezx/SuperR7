@@ -1,0 +1,51 @@
+name: Cover art emulator
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/cover-art
+
+jobs:
+  mgba-cover-demo:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Install build and visual-test dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi curl python3-pil
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Build standard-GBA cover demo
+        run: make BOARD=sd cover-demo.gba
+
+      - name: Install official mGBA development headless build
+        run: |
+          curl -fsSL https://s3.amazonaws.com/mgba/mGBA-build-latest-ubuntu64-noble.tar.xz -o /tmp/mgba.tar.xz
+          mkdir -p /tmp/mgba
+          tar -xf /tmp/mgba.tar.xz -C /tmp/mgba
+          sudo apt-get install -y "$(find /tmp/mgba -name mgba-headless.deb -print -quit)"
+          mgba-headless --version
+
+      - name: Capture scripted emulator states
+        run: |
+          mkdir -p artifacts/cover-demo
+          timeout 15s mgba-headless --script tools/mgba-cover-demo.lua cover-demo.gba || test -f artifacts/cover-demo/complete.txt
+          test -f artifacts/cover-demo/complete.txt
+
+      - name: Verify framebuffer output
+        run: python3 tests/cover_demo_visual.py
+
+      - name: Upload demo ROM and reference screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: superfw-cover-art-mgba-demo
+          path: |
+            cover-demo.gba
+            firmware.demo.ewram.elf
+            firmware.demo.ewram.map
+            artifacts/cover-demo/*

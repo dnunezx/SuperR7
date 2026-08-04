@@ -15,6 +15,84 @@
 #include "fatfs/ff.h"
 #endif
 
+#ifdef COVER_ART_DEMO
+static void demo_write16le(uint8_t *p, uint16_t value) {
+  p[0] = value;
+  p[1] = value >> 8;
+}
+
+static void demo_write32le(uint8_t *p, uint32_t value) {
+  p[0] = value;
+  p[1] = value >> 8;
+  p[2] = value >> 16;
+  p[3] = value >> 24;
+}
+
+static t_cover_read_result make_demo_cover(uint8_t *data, unsigned capacity,
+                                           unsigned *size, bool checker) {
+  static const uint16_t aurora_palette[] = {
+    0x0000, 0x001F, 0x03FF, 0x03E0, 0x7FE0, 0x7C00, 0x7C1F, 0x7FFF,
+  };
+  static const uint16_t checker_palette[] = {
+    0x0000, 0x7FFF, 0x4210, 0x7C1F, 0x021F, 0x03FF, 0x7C00, 0x03E0,
+  };
+  const uint16_t *palette = checker ? checker_palette : aurora_palette;
+  const unsigned palette_count = 8;
+  const unsigned palette_bytes = palette_count * 2;
+  const unsigned total_size = COVER_HEADER_SIZE + palette_bytes + COVER_PIXEL_COUNT;
+  if (capacity < total_size)
+    return CoverReadTooLarge;
+
+  memset(data, 0, total_size);
+  memcpy(data, "SFCV", 4);
+  data[4] = 1;
+  data[5] = COVER_HEADER_SIZE;
+  demo_write16le(&data[8], COVER_WIDTH);
+  demo_write16le(&data[10], COVER_HEIGHT);
+  demo_write16le(&data[12], palette_count);
+  data[14] = COVER_PALETTE_BASE;
+  demo_write32le(&data[16], palette_bytes);
+  demo_write32le(&data[20], COVER_PIXEL_COUNT);
+
+  for (unsigned i = 0; i < palette_count; i++)
+    demo_write16le(&data[COVER_HEADER_SIZE + i * 2], palette[i]);
+
+  uint8_t *pixels = &data[COVER_HEADER_SIZE + palette_bytes];
+  for (unsigned y = 0; y < COVER_HEIGHT; y++) {
+    for (unsigned x = 0; x < COVER_WIDTH; x++) {
+      unsigned color;
+      if (x < 2 || x >= COVER_WIDTH - 2 || y < 2 || y >= COVER_HEIGHT - 2)
+        color = 0;
+      else if (checker)
+        color = 1 + ((x / 9 + y / 9) % 7);
+      else
+        color = 1 + ((x / 10 + y / 13) % 6);
+      pixels[y * COVER_WIDTH + x] = COVER_PALETTE_BASE + color;
+    }
+  }
+
+  demo_write32le(&data[24], cover_crc32(&data[COVER_HEADER_SIZE],
+                                        palette_bytes + COVER_PIXEL_COUNT));
+  *size = total_size;
+  return CoverReadOk;
+}
+
+t_cover_read_result cover_demo_read(const char *path, uint8_t *data,
+                                    unsigned capacity, unsigned *size) {
+  if (!strcmp(path, COVER_DIRECTORY "Aurora.sfcov"))
+    return make_demo_cover(data, capacity, size, false);
+  if (!strcmp(path, COVER_DIRECTORY "Checker.sfcov"))
+    return make_demo_cover(data, capacity, size, true);
+  if (!strcmp(path, COVER_DIRECTORY "Broken.sfcov")) {
+    t_cover_read_result result = make_demo_cover(data, capacity, size, false);
+    if (result == CoverReadOk)
+      data[24] ^= 0x80;  /* Keep the structure plausible but break its CRC. */
+    return result;
+  }
+  return CoverReadMissing;
+}
+#endif
+
 static uint16_t read16le(const uint8_t *p) {
   return p[0] | ((uint16_t)p[1] << 8);
 }

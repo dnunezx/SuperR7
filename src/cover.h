@@ -74,5 +74,9 @@ const uint8_t *cover_cache_pixels(const t_cover_cache *cache);
 t_cover_read_result cover_fatfs_read(const char *path, uint8_t *data,
                                      unsigned capacity, unsigned *size);
 #endif
+#ifdef COVER_ART_DEMO
+t_cover_read_result cover_demo_read(const char *path, uint8_t *data,
+                                    unsigned capacity, unsigned *size);
+#endif
 
 #endif

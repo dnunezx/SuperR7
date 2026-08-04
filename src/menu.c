@@ -72,8 +72,13 @@ enum {
 #endif
 };
 
+#ifdef COVER_ART_DEMO
+#define BROWSER_MAXFN_CNT             8
+#define RECENT_MAXFN_CNT              4
+#else
 #define BROWSER_MAXFN_CNT     (16*1024)
 #define RECENT_MAXFN_CNT          (200)
+#endif
 #define BROWSER_ROWS                 8
 #define RECENT_ROWS                  9
 #define NORGAMES_ROWS                8
@@ -401,7 +406,11 @@ _Static_assert (sizeof(t_rentry) % 4 == 0, "t_rentry must be word-friendly");
 //  - Recently played ROMs table (~64KiB)
 //  - Font data (placed by the bootloader at the 15..16MB range)
 // At the end of the SDRAM, ro-data can be loaded by the loader.
+#ifdef COVER_ART_DEMO
+#define scratch_mem_size 0
+#else
 #define scratch_mem_size (2*1024*1024)
+#endif
 typedef struct {
   uint8_t scratch[scratch_mem_size];
   t_centry *fileorder[BROWSER_MAXFN_CNT];
@@ -413,7 +422,12 @@ typedef struct {
 
 _Static_assert (sizeof(t_sdram_state) <= 14.5*1024*1024, "scratch SDRAM doesn't exceed 14.5MB");
 
+#ifdef COVER_ART_DEMO
+static t_sdram_state demo_sdr_state __attribute__((section(".sbss")));
+t_sdram_state *sdr_state = &demo_sdr_state;
+#else
 t_sdram_state *sdr_state = (t_sdram_state*)0x08000000;
+#endif
 uint8_t *hiscratch = (uint8_t*)ROM_HISCRATCH_U8;
 
 typedef struct {
@@ -2212,12 +2226,81 @@ static void menu_cover_request_selected() {
 
 void menu_update() {
   unsigned previous_state = sdr_state->cover.state;
+#ifdef COVER_ART_DEMO
+  cover_cache_poll(&sdr_state->cover, systime(), cover_demo_read);
+#else
   cover_cache_poll(&sdr_state->cover, systime(), cover_fatfs_read);
+#endif
   if (previous_state != CoverReady && sdr_state->cover.state == CoverReady)
     dma_memcpy16(&MEM_PALETTE[COVER_PALETTE_BASE],
                  cover_cache_palette(&sdr_state->cover),
                  sdr_state->cover.info.palette_count);
 }
+
+static void menu_setup_display() {
+  // Load icons into VRAM
+  dma_memcpy16(MEM_VRAM_OBJS, icons_img, sizeof(icons_img) / 2);
+  dma_memcpy16(&MEM_PALETTE[256], icons_pal, sizeof(icons_pal) / 2);
+  // Generate some icons (selector)
+  dma_memset16(&MEM_VRAM_OBJS[63 * 256], dup8(SEL_COLOR), 256 / 2);
+
+  // Further setup initial video regs. BG2 is setup in the bootloader already!
+  REG_WININ  = 0x0004;     // Only BG2 is enabled in Win0
+  REG_WINOUT = 0x0014;     // BG2 and OBJ enabled outside of Win0
+  REG_WIN0H = 0;
+  REG_WIN0V = 0;
+  REG_DISPCNT |= 0x2000;   // Enable window 0
+
+  // Setup alpha blending for the selector knob
+  REG_BLDCNT = 0x1F40;
+  REG_BLDALPHA = 0x0808;  // 50% alpha
+}
+
+#ifdef COVER_ART_DEMO
+void menu_demo_init() {
+  static const char *browser_names[] = {
+    "Aurora.gba",
+    "Checker.gba",
+    "Missing.gba",
+    "Broken.gba",
+    "Folder",
+  };
+  static const char *recent_paths[] = {
+    "/DEMO/Aurora.gba",
+    "/DEMO/Checker.gba",
+    "/DEMO/Missing.gba",
+    "/DEMO/Broken.gba",
+  };
+
+  memset(&smenu, 0, sizeof(smenu));
+  memset(&spop, 0, sizeof(spop));
+  memset(sdr_state, 0, sizeof(*sdr_state));
+  strcpy(smenu.browser.cpath, "/DEMO/");
+
+  for (unsigned i = 0; i < ARRAY_SIZE(browser_names); i++) {
+    t_centry *entry = &sdr_state->fentries[i];
+    strcpy(entry->fname, browser_names[i]);
+    entry->filesize = (i + 1) * 1024 * 1024;
+    entry->isdir = i == ARRAY_SIZE(browser_names) - 1;
+    entry->attr = entry->isdir ? AM_DIR : 0;
+    sdr_state->fileorder[i] = entry;
+  }
+  smenu.browser.maxentries = ARRAY_SIZE(browser_names);
+  smenu.browser.dispentries = ARRAY_SIZE(browser_names);
+
+  for (unsigned i = 0; i < ARRAY_SIZE(recent_paths); i++) {
+    strcpy(sdr_state->rentries[i].fpath, recent_paths[i]);
+    sdr_state->rentries[i].fname_offset = sizeof("/DEMO/") - 1;
+  }
+  smenu.recent.maxentries = ARRAY_SIZE(recent_paths);
+
+  cover_cache_init(&sdr_state->cover);
+  reload_theme(2);  // High-contrast blue theme for reference screenshots.
+  smenu.menu_tab = MENUTAB_ROMBROWSE;
+  menu_cover_request_selected();
+  menu_setup_display();
+}
+#endif
 
 void menu_init(int sram_testres) {
   // Reset to ROM browser and SD card root.
@@ -2237,23 +2320,7 @@ void menu_init(int sram_testres) {
 
   smenu.menu_tab = (recent_menu && smenu.recent.maxentries) ? MENUTAB_RECENT : MENUTAB_ROMBROWSE;
   menu_cover_request_selected();
-
-  // Load icons into VRAM
-  dma_memcpy16(MEM_VRAM_OBJS, icons_img, sizeof(icons_img) / 2);
-  dma_memcpy16(&MEM_PALETTE[256], icons_pal, sizeof(icons_pal) / 2);
-  // Generate some icons (selector)
-  dma_memset16(&MEM_VRAM_OBJS[63 * 256], dup8(SEL_COLOR), 256 / 2);
-
-  // Further setup initial video regs. BG2 is setup in the bootloader already!
-  REG_WININ  = 0x0004;     // Only BG2 is enabled in Win0
-  REG_WINOUT = 0x0014;     // BG2 and OBJ enabled outside of Win0
-  REG_WIN0H = 0;
-  REG_WIN0V = 0;
-  REG_DISPCNT |= 0x2000;   // Enable window 0
-
-  // Setup alpha blending for the selector knob
-  REG_BLDCNT = 0x1F40;
-  REG_BLDALPHA = 0x0808;  // 50% alpha
+  menu_setup_display();
 
   // If there's a test result to report, create a popup
   if (sram_testres >= 0)
@@ -2926,6 +2993,7 @@ static void keypress_menu_recent(unsigned newkeys) {
       smenu.recent.selector = MIN(smenu.recent.maxentries - 1, smenu.recent.selector + RECENT_ROWS);
       smenu.recent.seloff   = MIN(smenu.recent.maxentries - 1, smenu.recent.seloff   + RECENT_ROWS);
     }
+#ifndef COVER_ART_DEMO
     if (newkeys & KEY_BUTTA) {
       t_rentry *e = &sdr_state->rentries[smenu.recent.selector];
       // stat() the file since we need the size, and validate that it exists!
@@ -2950,6 +3018,7 @@ static void keypress_menu_recent(unsigned newkeys) {
       spop.qpop.callback = recent_del_cb;
       spop.qpop.clear_popup_ok = false;
     }
+#endif
   }
 
   if (smenu.recent.selector < smenu.recent.seloff)
@@ -2974,6 +3043,7 @@ static void keypress_menu_browse(unsigned newkeys) {
       smenu.browser.seloff   = MIN(smenu.browser.dispentries - 1, smenu.browser.seloff   + BROWSER_ROWS);
     }
     // Move into a new dir and/or open a file
+#ifndef COVER_ART_DEMO
     if (newkeys & KEY_BUTTA) {
       t_centry *e = sdr_state->fileorder[smenu.browser.selector];
       if (e->isdir) {
@@ -2998,7 +3068,9 @@ static void keypress_menu_browse(unsigned newkeys) {
       spop.anim = 0;
       spop.selector = 0;
     }
+#endif
   }
+#ifndef COVER_ART_DEMO
   if (newkeys & KEY_BUTTB) {
     // Try to go up in the dir structure
     if (movedir_up()) {
@@ -3008,6 +3080,7 @@ static void keypress_menu_browse(unsigned newkeys) {
       browser_reload();
     }
   }
+#endif
 
   // Selector was updated, figure out how we update the menu params so it
   // can be rendered properly.

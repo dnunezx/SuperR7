@@ -133,6 +133,7 @@ static int main_gba() {
   REG_WAITCNT = 0x40c0;    // 0x8-0x9: Use 4/2 waitstates (default, slow for SDRAM)
                            // 0xA-0xB: Use 2/1 for fast SD interface access
 
+#ifndef COVER_ART_DEMO
   // Video is configured in Mode 4 with the logo rendered on the screen.
 
   // Setup the ROM mapping to allow SD driver. Allow SDRAM usage (as buffer)
@@ -155,6 +156,16 @@ static int main_gba() {
   memset(&pdbinfo, 0, sizeof(pdbinfo));
   patchmem_dbinfo((uint8_t*)ROM_PATCHDB_U8, &pdbinfo.patch_count, pdbinfo.version, pdbinfo.date, pdbinfo.creator);
   set_supercard_mode(MAPPED_SDRAM, true, true);
+#else
+  // The SuperCard bootloader normally initializes these affine BG2 registers.
+  REG_BG2CNT = 0;
+  REG_BG2PA = 0x0100;
+  REG_BG2PB = 0;
+  REG_BG2PC = 0;
+  REG_BG2PD = 0x0100;
+  REG_BG2X = 0;
+  REG_BG2Y = 0;
+#endif
 
   // Configure video mode so we can render the menu.
   setup_video();
@@ -168,7 +179,11 @@ static int main_gba() {
   set_irq_enable(true);
 
   // Initialize menu, start displaying some UI to the user.
+#ifdef COVER_ART_DEMO
+  menu_demo_init();
+#else
   menu_init(sram_tres);
+#endif
 
   menu_render(1);
   menu_flip();
@@ -219,6 +234,12 @@ static int main_nds() {
 }
 
 int main() {
+#ifdef COVER_ART_DEMO
+  // The demo is a standard GBA ROM and deliberately avoids SuperCard probing.
+  isgba = true;
+  fastew = false;
+  return main_gba();
+#else
   // Detect whether we are running on GBA or NDS.
   isgba = !running_on_nds();
   // Similarly detect if EWRAM seems overclockable (GBA but not micro).
@@ -231,5 +252,6 @@ int main() {
     return main_gba();
   else
     return main_nds();
+#endif
 }
 

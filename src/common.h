@@ -44,7 +44,11 @@
 #define BM_TEST(bm, n)         ((bm)[BM_IDX(bm, n)] &   BMMASK(bm, n))
 
 #define MAX_FN_LEN                 256
+#ifdef COVER_ART_DEMO
+#define FLASHG_MAXFN_CNT             2
+#else
 #define FLASHG_MAXFN_CNT           32            // No more than 32 games in NOR
+#endif
 
 #define SUPERFW_DIR               "/.superfw"
 #define ROMCONFIG_PATH            "/.superfw/config/"
@@ -223,6 +227,9 @@ typedef struct {
 
 // Menu system
 void menu_init(int);    // Initializes meny system (ie. loading resources)
+#ifdef COVER_ART_DEMO
+void menu_demo_init();  // Initializes the emulator-only synthetic browser
+#endif
 void menu_update();     // Performs deferred menu work outside the drawing path
 void menu_render(unsigned fcnt);     // Renders the menu to the backframe
 void menu_keypress(unsigned newkeys);   // Notifies key press

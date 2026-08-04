@@ -159,6 +159,18 @@ all:	$(FWBINFILES) $(BIEMUFILES) directsave.payload ingame_trampoline.payload
 	# Fix the header/checksum.
 	./tools/fw-fixer.py superfw.gba
 
+cover-demo.gba: firmware.demo.ewram.gba src/cover_demo_boot.S ldscripts/gba_cover_demo.ld
+	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -o cover-demo.elf src/cover_demo_boot.S \
+		-T ldscripts/gba_cover_demo.ld -nostartfiles -nostdlib
+	$(OBJCOPY) --output-target=binary cover-demo.elf cover-demo.gba
+	./tools/fw-fixer.py cover-demo.gba
+
+firmware.demo.ewram.gba: $(INFILES) ingamemenu.payload superfw.dldi.payload directsave.payload ingame_trampoline.payload src/messages_data.h ldscripts/gba_ewram.ld.i
+	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -o firmware.demo.ewram.elf $(INFILES) \
+		-T ldscripts/gba_ewram.ld.i -nostartfiles -Wl,-Map=firmware.demo.ewram.map \
+		-Wl,--print-memory-usage -fno-builtin
+	$(OBJCOPY) --output-target=binary firmware.demo.ewram.elf firmware.demo.ewram.gba
+
 firmware.ewram.gba: $(INFILES) ingamemenu.payload superfw.dldi.payload directsave.payload ingame_trampoline.payload src/messages_data.h ldscripts/gba_ewram.ld.i
 	# Build the actual firmware image
 	$(CC) $(CFLAGS) -o firmware.ewram.elf $(INFILES) -T ldscripts/gba_ewram.ld.i -nostartfiles -Wl,-Map=firmware.ewram.map -Wl,--print-memory-usage -fno-builtin

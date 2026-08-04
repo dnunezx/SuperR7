@@ -25,8 +25,11 @@ all:
 	$(CC) $(CFLAGS) $(MEMCHK_FLAGS) -o cover_test.bin cover_test.c ../src/cover.c
 	./cover_test.bin
 	lcov -c -d . -o cover_test.info
+	$(CC) $(CFLAGS) $(MEMCHK_FLAGS) -DCOVER_ART_DEMO -o cover_demo_test.bin cover_demo_test.c ../src/cover.c
+	./cover_demo_test.bin
+	lcov -c -d . -o cover_demo_test.info
 
-	lcov -a cimpl_test.info -a util_test.info -a utf_util_test.info -a crc_test.info -a sha256_test.info -a cheats_test.info -a cover_test.info -o total.info
+	lcov -a cimpl_test.info -a util_test.info -a utf_util_test.info -a crc_test.info -a sha256_test.info -a cheats_test.info -a cover_test.info -a cover_demo_test.info -o total.info
 	rm -rf coverage/
 	genhtml -o coverage/ total.info
 
