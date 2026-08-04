@@ -139,6 +139,17 @@ static void test_deferred_cache(void) {
   cover_cache_poll(&cache, 3000, fake_reader);
   assert(cache.state == CoverReady && reader_calls == 1);
 
+  /* A changed selection must hide the old render data immediately. */
+  cover_cache_request(&cache, "/Games/Another Game.gba", 3100);
+  assert(cache.state == CoverPending);
+  assert(!cover_cache_palette(&cache));
+  assert(!cover_cache_pixels(&cache));
+
+  /* Returning to the first game schedules one fresh read. */
+  cover_cache_request(&cache, "/Games/Pokemon Emerald.gba", 3200);
+  cover_cache_poll(&cache, 3380, fake_reader);
+  assert(cache.state == CoverReady && reader_calls == 2);
+
   cover_cache_request(&cache, "notes.txt", 3000);
   assert(cache.state == CoverEmpty);
   assert(!cover_cache_pixels(&cache));

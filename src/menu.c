@@ -78,6 +78,16 @@ enum {
 #define RECENT_ROWS                  9
 #define NORGAMES_ROWS                8
 
+#define COVER_PANEL_LEFT           164
+#define COVER_PANEL_TOP             26
+#define COVER_IMAGE_LEFT           (COVER_PANEL_LEFT + 2)
+#define COVER_IMAGE_TOP            (COVER_PANEL_TOP + 2)
+#define COVER_LIST_RIGHT           COVER_PANEL_LEFT
+#define COVER_SELECTOR_RIGHT       160
+
+_Static_assert (COVER_IMAGE_LEFT + COVER_WIDTH <= SCREEN_WIDTH, "cover exceeds screen width");
+_Static_assert (COVER_IMAGE_TOP + COVER_HEIGHT <= SCREEN_HEIGHT, "cover exceeds screen height");
+
 // First entries reserved for the logo palette.
 #define FG_COLOR         16
 #define BG_COLOR         17
@@ -1392,12 +1402,12 @@ void render_recent(volatile uint8_t *frame) {
     // Animate the row entries if they are too long!
     if (i == smenu.recent.selector - smenu.recent.seloff)
       draw_text_ovf_rotate(fn, frame, 20, (1 + i) * 16,
-                           SCREEN_WIDTH - 24, &smenu.anim_state);
+                           COVER_LIST_RIGHT - 24, &smenu.anim_state);
     else
-      draw_text_ovf(fn, frame, 20, (1 + i) * 16, SCREEN_WIDTH - 24);
+      draw_text_ovf(fn, frame, 20, (1 + i) * 16, COVER_LIST_RIGHT - 24);
   }
 
-  for (unsigned i = 0; i < 240; i += 16)
+  for (unsigned i = 0; i < COVER_SELECTOR_RIGHT; i += 16)
     render_icon_trans(i, (smenu.recent.selector - smenu.recent.seloff + 1)*16, 63);
 }
 
@@ -1451,7 +1461,9 @@ void render_browser(volatile uint8_t *frame) {
   dma_memset16(&frame[240*144], dup8(FG_COLOR), 240*16/2);
 
   if (!smenu.browser.dispentries)
-    draw_central_text(msgs[lang_id][MSG_BROW_EMPTY], frame, SCREEN_WIDTH/2, SCREEN_HEIGHT/2-8);
+    draw_central_text_ovf(msgs[lang_id][MSG_BROW_EMPTY], frame,
+                          COVER_LIST_RIGHT / 2, SCREEN_HEIGHT/2-8,
+                          COVER_LIST_RIGHT - 16);
   else {
     for (unsigned i = 0; i < BROWSER_ROWS; i++) {
       if (smenu.browser.seloff + i >= smenu.browser.dispentries)
@@ -1468,18 +1480,19 @@ void render_browser(volatile uint8_t *frame) {
 
       if (!(e->attr & AM_DIR)) {
         human_size(szstr, sizeof(szstr), e->filesize);
-        draw_rightj_text(szstr, frame, SCREEN_WIDTH - 2, (1 + i) * 16);
+        draw_rightj_text(szstr, frame, COVER_LIST_RIGHT - 2, (1 + i) * 16);
       }
 
       // Animate the row entries if they are too long!
       if (i == smenu.browser.selector - smenu.browser.seloff)
         draw_text_ovf_rotate(e->fname, frame, 20, (1 + i) * 16,
-                             SCREEN_WIDTH - 26 - font_width(szstr), &smenu.anim_state);
+                             COVER_LIST_RIGHT - 26 - font_width(szstr), &smenu.anim_state);
       else
-        draw_text_ovf(e->fname, frame, 20, (1 + i) * 16, SCREEN_WIDTH - 26 - font_width(szstr));
+        draw_text_ovf(e->fname, frame, 20, (1 + i) * 16,
+                      COVER_LIST_RIGHT - 26 - font_width(szstr));
     }
 
-    for (unsigned i = 0; i < 240; i += 16)
+    for (unsigned i = 0; i < COVER_SELECTOR_RIGHT; i += 16)
       render_icon_trans(i, (smenu.browser.selector - smenu.browser.seloff + 1)*16, 63);
   }
 
@@ -1489,6 +1502,26 @@ void render_browser(volatile uint8_t *frame) {
   char selinfo[16];
   npf_snprintf(selinfo, sizeof(selinfo), "%u/%d", smenu.browser.selector + 1, smenu.browser.dispentries);
   draw_rightj_text(selinfo, frame, SCREEN_WIDTH - 1, 1);
+}
+
+static void render_cover_panel(volatile uint8_t *frame) {
+  draw_box_outline(frame, COVER_PANEL_LEFT, SCREEN_WIDTH, COVER_PANEL_TOP,
+                   COVER_IMAGE_TOP + COVER_HEIGHT + 2, FG_COLOR);
+
+  if (sdr_state->cover.state == CoverReady) {
+    const uint8_t *pixels = cover_cache_pixels(&sdr_state->cover);
+    for (unsigned row = 0; row < COVER_HEIGHT; row++)
+      dma_memcpy16(&frame[(COVER_IMAGE_TOP + row) * SCREEN_WIDTH + COVER_IMAGE_LEFT],
+                   &pixels[row * COVER_WIDTH], COVER_WIDTH / 2);
+  } else {
+    const char *message = sdr_state->cover.state == CoverPending ? "Loading..." :
+                          sdr_state->cover.state == CoverMissing ? "No cover" :
+                          sdr_state->cover.state == CoverInvalid ? "Bad cover" :
+                          sdr_state->cover.state == CoverIoError ? "SD error" : NULL;
+    if (message)
+      draw_central_text(message, frame, COVER_IMAGE_LEFT + COVER_WIDTH / 2,
+                        COVER_IMAGE_TOP + COVER_HEIGHT / 2 - 4);
+  }
 }
 
 void render_fw_flash_popup(volatile uint8_t *frame) {
@@ -2125,6 +2158,8 @@ void menu_render(unsigned fcnt) {
         render_info,
       };
       renderfns[smenu.menu_tab](frame);
+      if (smenu.menu_tab == MENUTAB_RECENT || smenu.menu_tab == MENUTAB_ROMBROWSE)
+        render_cover_panel(frame);
       smenu.anim_state += fcnt * animspd_lut[anim_speed];
     }
   }
@@ -2176,7 +2211,12 @@ static void menu_cover_request_selected() {
 }
 
 void menu_update() {
+  unsigned previous_state = sdr_state->cover.state;
   cover_cache_poll(&sdr_state->cover, systime(), cover_fatfs_read);
+  if (previous_state != CoverReady && sdr_state->cover.state == CoverReady)
+    dma_memcpy16(&MEM_PALETTE[COVER_PALETTE_BASE],
+                 cover_cache_palette(&sdr_state->cover),
+                 sdr_state->cover.info.palette_count);
 }
 
 void menu_init(int sram_testres) {
