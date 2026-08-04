@@ -16,7 +16,7 @@ The ROM starts on a synthetic `/DEMO/` browser with these entries:
 - `Folder`: a non-ROM entry that does not request artwork.
 
 Recent Games contains the same four ROM paths. Cover bytes still go through the
-normal version 1 `.sfcov` validator and cache; only the demo's storage reader is
+normal version 2 `.sfcov` validator and cache; only the demo's storage reader is
 synthetic.
 
 ## Build and run locally

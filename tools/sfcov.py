@@ -1,4 +1,4 @@
-"""Read and write the version 1 SuperFW cover format."""
+"""Read and write the version 2 SuperFW cover format."""
 
 from __future__ import annotations
 
@@ -9,10 +9,10 @@ import zlib
 
 
 MAGIC = b"SFCV"
-VERSION = 1
+VERSION = 2
 HEADER_SIZE = 32
 WIDTH = 72
-HEIGHT = 104
+HEIGHT = 72
 PIXEL_COUNT = WIDTH * HEIGHT
 PALETTE_BASE = 20
 MAX_PALETTE_COLORS = 220
@@ -23,7 +23,7 @@ assert HEADER.size == HEADER_SIZE
 
 
 class CoverFormatError(ValueError):
-    """Raised when a cover does not conform to the version 1 format."""
+    """Raised when a cover does not conform to the version 2 format."""
 
 
 def rgb888_to_bgr555(red: int, green: int, blue: int) -> int:
@@ -143,11 +143,11 @@ class Cover:
             raise CoverFormatError("unsupported flags or non-zero reserved fields")
         if width != WIDTH or height != HEIGHT:
             raise CoverFormatError(
-                f"version 1 covers must be exactly {WIDTH}x{HEIGHT}"
+                f"version {VERSION} covers must be exactly {WIDTH}x{HEIGHT}"
             )
         if palette_base != PALETTE_BASE:
             raise CoverFormatError(
-                f"version 1 palette base must be {PALETTE_BASE}"
+                f"version {VERSION} palette base must be {PALETTE_BASE}"
             )
         if not 1 <= palette_count <= MAX_PALETTE_COLORS:
             raise CoverFormatError("palette count is out of range")

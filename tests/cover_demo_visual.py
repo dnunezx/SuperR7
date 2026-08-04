@@ -7,8 +7,8 @@ from PIL import Image, ImageChops
 
 
 SCREENSHOT_DIR = Path(os.environ.get("COVER_DEMO_SCREENSHOTS", "artifacts/cover-demo"))
-PANEL_BOX = (164, 26, 240, 134)
-PANEL_IMAGE = (166, 28, 238, 132)
+PANEL_BOX = (164, 42, 240, 118)
+PANEL_IMAGE = (166, 44, 238, 116)
 FRAME_SIZE = 512 + 240 * 160
 
 

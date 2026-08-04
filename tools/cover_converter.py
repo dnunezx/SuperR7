@@ -17,6 +17,7 @@ try:
         HEIGHT,
         MAX_PALETTE_COLORS,
         PALETTE_BASE,
+        VERSION,
         WIDTH,
         bgr555_to_rgb888,
         rgb888_to_bgr555,
@@ -28,6 +29,7 @@ except ImportError:  # Direct execution: python tools/cover_converter.py
         HEIGHT,
         MAX_PALETTE_COLORS,
         PALETTE_BASE,
+        VERSION,
         WIDTH,
         bgr555_to_rgb888,
         rgb888_to_bgr555,
@@ -319,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.preview.parent.mkdir(parents=True, exist_ok=True)
                 cover_to_image(cover).save(args.preview, format="PNG")
             print(
-                f"{args.input}: version 1, {WIDTH}x{HEIGHT}, "
+                f"{args.input}: version {VERSION}, {WIDTH}x{HEIGHT}, "
                 f"{len(cover.palette)} colors, {len(cover.pixels)} pixels"
             )
     except (CoverFormatError, OSError, ValueError) as exc:

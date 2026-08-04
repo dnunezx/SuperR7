@@ -28,7 +28,7 @@ static void make_fixture(void) {
   fixture_size = COVER_HEADER_SIZE + palette_bytes + COVER_PIXEL_COUNT;
   memset(fixture, 0, fixture_size);
   memcpy(fixture, "SFCV", 4);
-  fixture[4] = 1;
+  fixture[4] = COVER_FORMAT_VERSION;
   fixture[5] = COVER_HEADER_SIZE;
   write16le(&fixture[8], COVER_WIDTH);
   write16le(&fixture[10], COVER_HEIGHT);
@@ -69,7 +69,7 @@ static void test_crc_and_validation(void) {
 
   fixture[0] = 'X';
   assert(!cover_validate(fixture, fixture_size, NULL));
-  make_fixture(); fixture[4] = 2;
+  make_fixture(); fixture[4] = COVER_FORMAT_VERSION - 1;
   assert(!cover_validate(fixture, fixture_size, NULL));
   make_fixture(); fixture[5] = 31;
   assert(!cover_validate(fixture, fixture_size, NULL));

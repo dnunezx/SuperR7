@@ -21,6 +21,7 @@ from tools.sfcov import (
     MAX_PALETTE_COLORS,
     PALETTE_BASE,
     PIXEL_COUNT,
+    VERSION,
     WIDTH,
     bgr555_to_rgb888,
 )
@@ -95,6 +96,15 @@ class CoverConverterTest(unittest.TestCase):
         fields[4] = WIDTH + 1
         encoded[:HEADER_SIZE] = HEADER.pack(*fields)
         with self.assertRaisesRegex(CoverFormatError, "exactly"):
+            Cover.from_bytes(bytes(encoded))
+
+    def test_portrait_version_1_cover_is_rejected(self):
+        cover = image_to_cover(Image.new("RGB", (1, 1), "blue"), dither="none")
+        encoded = bytearray(cover.to_bytes())
+        fields = list(HEADER.unpack_from(encoded))
+        fields[1] = VERSION - 1
+        encoded[:HEADER_SIZE] = HEADER.pack(*fields)
+        with self.assertRaisesRegex(CoverFormatError, "unsupported cover version"):
             Cover.from_bytes(bytes(encoded))
 
     def test_trailing_bytes_are_rejected(self):

@@ -13,8 +13,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define COVER_FORMAT_VERSION         2
 #define COVER_WIDTH                 72
-#define COVER_HEIGHT               104
+#define COVER_HEIGHT                72
 #define COVER_PIXEL_COUNT          (COVER_WIDTH * COVER_HEIGHT)
 #define COVER_PALETTE_BASE          20
 #define COVER_MAX_PALETTE_COLORS    220

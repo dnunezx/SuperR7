@@ -26,7 +26,7 @@ not attempt to show a grid of multiple covers.
 | Phase | Status | Result |
 | --- | --- | --- |
 | 1: Clean baseline | Complete | SD build and host tests pass; baseline sizes recorded. Physical smoke test remains pending. |
-| 2: Cover format and converter | Complete | Version 1 format, converter, batch mode, previews, strict validation, documentation, and automated tests implemented. |
+| 2: Cover format and converter | Complete | Version 2 square format, converter, batch mode, previews, strict validation, documentation, and automated tests implemented. |
 | 3: Firmware loader and cache | Complete | Strict firmware parser, basename lookup, fixed SDRAM cache, deferred SD loading, Browse/Recent selection tracking, and host tests implemented. |
 | 4: Browser integration | Complete | Selected covers, theme-aware placeholders, clipped selectors, and narrower Browse/Recent lists are implemented. Emulator and hardware visual verification remain in Phases 5-6. |
 | 5: PC and emulator verification | Complete | A standard-GBA demo ROM now exercises the real menu in mGBA; scripted visual checks cover navigation, valid/missing/corrupt art, Browse/Recent parity, panel bounds, and stable frame swaps. |
@@ -46,9 +46,8 @@ The working name for the format is `.sfcov`. Each file will contain:
 - Indexed pixel data.
 - Length and integrity fields needed for safe validation.
 
-The initial target size is approximately 72 by 104 pixels. The exact dimensions
-and color count will be finalized after auditing the menu palette and testing a
-screen mockup.
+The finalized target is a 72-by-72 square, matching GBA box-art proportions and
+the 76-pixel-wide right-hand panel. Covers may use up to 220 colors.
 
 Example SD layout:
 
@@ -131,9 +130,9 @@ Acceptance criteria:
 
 Phase 2 result:
 
-- [Version 1 `.sfcov` specification](docs/cover-format.md)
+- [Version 2 `.sfcov` specification](docs/cover-format.md)
 - [Desktop converter instructions](docs/cover-converter.md)
-- Fixed 72-by-104 pixel covers with 1-220 BGR555 colors.
+- Version 2 uses fixed 72-by-72 square covers with 1-220 BGR555 colors.
 - Palette indices 20-239 are reserved for direct framebuffer copies.
 - Exact file length and CRC-32 validation are implemented.
 - Single-file conversion, recursive batch conversion, preview generation,
@@ -142,7 +141,8 @@ Phase 2 result:
 - Twelve automated tests cover round trips, palette limits, transparency,
   letterboxing, corrupt CRCs, invalid dimensions and indices, truncated/trailing
   data, batch behavior, collisions, and overwrite safety.
-- A representative preview produced a valid 7,752-byte cover with 116 colors.
+- The square Metal Slug Advance test image produced a valid 5,640-byte cover
+  with 212 colors.
 
 ### Phase 3: Firmware loader and cache
 
@@ -163,7 +163,7 @@ Phase 3 result:
   state, and render-ready palette/pixel access.
 - Cover paths are derived safely from supported ROM basenames and resolved under
   `/.superfw/covers/`.
-- One 8,232-byte fixed cache lives in SuperCard SDRAM; cover data does not use
+- One 5,928-byte fixed cache lives in SuperCard SDRAM; cover data does not use
   the GBA heap or add artwork to the firmware image.
 - A changed selection immediately invalidates stale artwork, then waits 180 ms
   before performing one SD read outside the per-frame drawing path.
@@ -207,7 +207,8 @@ Acceptance criteria:
 
 Phase 4 implementation result:
 
-- Added a 72-by-104 cover panel at the right edge of Browse and Recent Games,
+- Added a 72-by-72 square cover panel at the right edge of Browse and Recent
+  Games, vertically centered between the tab and directory bars,
   surrounded by a two-pixel border using the active UI theme.
 - The file list now occupies the left 164 pixels. Long selected names retain
   their scrolling animation, while other long names retain ellipsis handling.

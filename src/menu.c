@@ -84,7 +84,7 @@ enum {
 #define NORGAMES_ROWS                8
 
 #define COVER_PANEL_LEFT           164
-#define COVER_PANEL_TOP             26
+#define COVER_PANEL_TOP             42
 #define COVER_IMAGE_LEFT           (COVER_PANEL_LEFT + 2)
 #define COVER_IMAGE_TOP            (COVER_PANEL_TOP + 2)
 #define COVER_LIST_RIGHT           COVER_PANEL_LEFT

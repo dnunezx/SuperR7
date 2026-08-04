@@ -1,6 +1,6 @@
 # SuperFW Cover Converter
 
-The converter turns PNG, JPEG, WebP, or BMP artwork into version 1 `.sfcov`
+The converter turns PNG, JPEG, WebP, or BMP artwork into version 2 `.sfcov`
 files. It can also write a PNG preview using the exact 15-bit colors that the
 GBA will display.
 
@@ -21,7 +21,7 @@ py tools\cover_converter.py convert `
   --preview "Pokemon Emerald-preview.png"
 ```
 
-The default `cover` resize mode fills the 72-by-104 canvas using a centered
+The default `cover` resize mode fills the 72-by-72 square canvas using a centered
 crop. To preserve the entire source image with letterboxing:
 
 ```powershell

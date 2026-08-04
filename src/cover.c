@@ -45,7 +45,7 @@ static t_cover_read_result make_demo_cover(uint8_t *data, unsigned capacity,
 
   memset(data, 0, total_size);
   memcpy(data, "SFCV", 4);
-  data[4] = 1;
+  data[4] = COVER_FORMAT_VERSION;
   data[5] = COVER_HEADER_SIZE;
   demo_write16le(&data[8], COVER_WIDTH);
   demo_write16le(&data[10], COVER_HEIGHT);
@@ -140,7 +140,8 @@ uint32_t cover_crc32(const uint8_t *data, unsigned size) {
 bool cover_validate(const uint8_t *data, unsigned size, t_cover_info *info) {
   if (!data || size < COVER_HEADER_SIZE || size > COVER_MAX_FILE_SIZE)
     return false;
-  if (memcmp(data, "SFCV", 4) || data[4] != 1 || data[5] != COVER_HEADER_SIZE)
+  if (memcmp(data, "SFCV", 4) || data[4] != COVER_FORMAT_VERSION ||
+      data[5] != COVER_HEADER_SIZE)
     return false;
   if (read16le(&data[6]) != 0 || data[15] != 0 || read32le(&data[28]) != 0)
     return false;
