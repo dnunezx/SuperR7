@@ -158,7 +158,7 @@ static int main_gba() {
   set_supercard_mode(MAPPED_SDRAM, true, true);
 #else
   // The SuperCard bootloader normally initializes these affine BG2 registers.
-  REG_BG2CNT = 0;
+  REG_BGxCNT(2) = 0;
   REG_BG2PA = 0x0100;
   REG_BG2PB = 0;
   REG_BG2PC = 0;
