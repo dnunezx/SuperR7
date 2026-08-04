@@ -181,6 +181,7 @@ static int main_gba() {
       menu_keypress(ckeys);
       prev_keys = ckeys;
     }
+    menu_update();
     unsigned cframe = frame_count;
     menu_render(frame_count - prev_frame);
 

@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "compiler.h"
+#include "cover.h"
 #include "gbahw.h"
 #include "patchengine.h"
 #include "fatfs/ff.h"
@@ -397,6 +398,7 @@ typedef struct {
   t_centry fentries[BROWSER_MAXFN_CNT];
   t_rentry rentries[RECENT_MAXFN_CNT];
   t_reg_entry_max nordata;
+  t_cover_cache cover;
 } t_sdram_state;
 
 _Static_assert (sizeof(t_sdram_state) <= 14.5*1024*1024, "scratch SDRAM doesn't exceed 14.5MB");
@@ -2150,10 +2152,38 @@ void menu_flip() {
   framen ^= 1;
 }
 
+static void menu_cover_request_selected() {
+  const char *rom_path = NULL;
+  char browser_path[MAX_FN_LEN];
+
+  if (smenu.menu_tab == MENUTAB_RECENT && smenu.recent.maxentries) {
+    rom_path = sdr_state->rentries[smenu.recent.selector].fpath;
+  } else if (smenu.menu_tab == MENUTAB_ROMBROWSE && smenu.browser.dispentries) {
+    t_centry *entry = sdr_state->fileorder[smenu.browser.selector];
+    unsigned directory_len = strlen(smenu.browser.cpath);
+    unsigned filename_len = strlen(entry->fname);
+    if (!entry->isdir && directory_len + filename_len + 1 <= sizeof(browser_path)) {
+      memcpy(browser_path, smenu.browser.cpath, directory_len);
+      memcpy(browser_path + directory_len, entry->fname, filename_len + 1);
+      rom_path = browser_path;
+    }
+  }
+
+  if (rom_path)
+    cover_cache_request(&sdr_state->cover, rom_path, systime());
+  else
+    cover_cache_clear(&sdr_state->cover);
+}
+
+void menu_update() {
+  cover_cache_poll(&sdr_state->cover, systime(), cover_fatfs_read);
+}
+
 void menu_init(int sram_testres) {
   // Reset to ROM browser and SD card root.
   memset(&smenu, 0, sizeof(smenu));
   memset(&spop, 0, sizeof(spop));
+  cover_cache_init(&sdr_state->cover);
 
   // Reset the file browser as well.
   strcpy(smenu.browser.cpath, "/");
@@ -2166,6 +2196,7 @@ void menu_init(int sram_testres) {
   reload_theme(menu_theme);
 
   smenu.menu_tab = (recent_menu && smenu.recent.maxentries) ? MENUTAB_RECENT : MENUTAB_ROMBROWSE;
+  menu_cover_request_selected();
 
   // Load icons into VRAM
   dma_memcpy16(MEM_VRAM_OBJS, icons_img, sizeof(icons_img) / 2);
@@ -3310,5 +3341,6 @@ void menu_keypress(unsigned newkeys) {
     };
     keyfns[smenu.menu_tab](newkeys);
   }
+  menu_cover_request_selected();
 }
 
