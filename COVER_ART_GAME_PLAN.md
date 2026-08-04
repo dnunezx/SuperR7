@@ -21,6 +21,15 @@ not attempt to show a grid of multiple covers.
 - Fall back safely when artwork is missing, invalid, or unreadable.
 - Test experimental builds by chain-loading them before flashing firmware.
 
+## Progress
+
+| Phase | Status | Result |
+| --- | --- | --- |
+| 1: Clean baseline | Complete | SD build and host tests pass; baseline sizes recorded. Physical smoke test remains pending. |
+| 2: Cover format and converter | Complete | Version 1 format, converter, batch mode, previews, strict validation, documentation, and automated tests implemented. |
+| 3: Firmware loader and cache | Not started | Next phase. |
+| 4-7 | Not started | Pending the firmware loader. |
+
 ## Proposed design
 
 ### Cover files
@@ -117,6 +126,21 @@ Acceptance criteria:
 - A converted file round-trips to a pixel-identical preview.
 - Invalid input cannot produce a cover exceeding firmware buffer limits.
 - Representative artwork remains recognizable on a GBA-sized preview.
+
+Phase 2 result:
+
+- [Version 1 `.sfcov` specification](docs/cover-format.md)
+- [Desktop converter instructions](docs/cover-converter.md)
+- Fixed 72-by-104 pixel covers with 1-220 BGR555 colors.
+- Palette indices 20-239 are reserved for direct framebuffer copies.
+- Exact file length and CRC-32 validation are implemented.
+- Single-file conversion, recursive batch conversion, preview generation,
+  cover/contain resize modes, inspection, and overwrite protection are
+  implemented.
+- Twelve automated tests cover round trips, palette limits, transparency,
+  letterboxing, corrupt CRCs, invalid dimensions and indices, truncated/trailing
+  data, batch behavior, collisions, and overwrite safety.
+- A representative preview produced a valid 7,752-byte cover with 116 colors.
 
 ### Phase 3: Firmware loader and cache
 
