@@ -85,6 +85,10 @@ The MVP matches the ROM basename without its extension. For example:
 Filename matching follows the filesystem behavior already used by SuperFW.
 Game-code lookup may be added in a later format-independent phase.
 
+The firmware first checks the organized `/.superfw/covers/` directory. For
+compatibility with SD implementations that fail to traverse that new nested
+directory, it retries the same filename directly under `/.superfw/`.
+
 ## Validation requirements
 
 A reader must reject a cover before drawing it if any of the following is true:

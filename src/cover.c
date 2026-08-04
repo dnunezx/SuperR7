@@ -208,6 +208,24 @@ bool cover_build_path(char *output, unsigned output_size, const char *rom_path) 
   return true;
 }
 
+bool cover_build_fallback_path(char *output, unsigned output_size,
+                               const char *cover_path) {
+  const unsigned source_prefix_len = sizeof(COVER_DIRECTORY) - 1;
+  const unsigned fallback_prefix_len = sizeof(COVER_FALLBACK_DIRECTORY) - 1;
+  if (!output || !output_size || !cover_path ||
+      strncmp(cover_path, COVER_DIRECTORY, source_prefix_len))
+    return false;
+
+  const char *filename = cover_path + source_prefix_len;
+  unsigned filename_len = strlen(filename);
+  if (!filename_len || fallback_prefix_len + filename_len + 1 > output_size)
+    return false;
+
+  memcpy(output, COVER_FALLBACK_DIRECTORY, fallback_prefix_len);
+  memcpy(output + fallback_prefix_len, filename, filename_len + 1);
+  return true;
+}
+
 void cover_cache_clear(t_cover_cache *cache) {
   cache->path[0] = 0;
   cache->file_size = 0;
@@ -275,8 +293,14 @@ t_cover_read_result cover_fatfs_read(const char *path, uint8_t *data,
                                      unsigned capacity, unsigned *size) {
   FIL file;
   FRESULT result = f_open(&file, path, FA_READ);
-  if (result == FR_NO_FILE || result == FR_NO_PATH)
-    return CoverReadMissing;
+  if (result == FR_NO_FILE || result == FR_NO_PATH) {
+    char fallback_path[COVER_PATH_MAX];
+    if (!cover_build_fallback_path(fallback_path, sizeof(fallback_path), path))
+      return CoverReadMissing;
+    result = f_open(&file, fallback_path, FA_READ);
+    if (result == FR_NO_FILE || result == FR_NO_PATH)
+      return CoverReadMissing;
+  }
   if (result != FR_OK)
     return CoverReadIoError;
 

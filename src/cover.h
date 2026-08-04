@@ -24,6 +24,7 @@
 #define COVER_PATH_MAX              256
 #define COVER_LOAD_DELAY_MS         180
 #define COVER_DIRECTORY             "/.superfw/covers/"
+#define COVER_FALLBACK_DIRECTORY    "/.superfw/"
 
 typedef enum {
   CoverEmpty = 0,
@@ -62,6 +63,8 @@ typedef struct {
 uint32_t cover_crc32(const uint8_t *data, unsigned size);
 bool cover_validate(const uint8_t *data, unsigned size, t_cover_info *info);
 bool cover_build_path(char *output, unsigned output_size, const char *rom_path);
+bool cover_build_fallback_path(char *output, unsigned output_size,
+                               const char *cover_path);
 
 void cover_cache_init(t_cover_cache *cache);
 void cover_cache_clear(t_cover_cache *cache);

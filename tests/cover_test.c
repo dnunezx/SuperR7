@@ -109,6 +109,16 @@ static void test_path_lookup(void) {
   assert(!cover_build_path(path, sizeof(path), "readme.txt"));
   assert(!cover_build_path(path, 12, "game.gba"));
 
+  char fallback[COVER_PATH_MAX];
+  assert(cover_build_fallback_path(
+      fallback, sizeof(fallback),
+      "/.superfw/covers/Metal Slug Advance (USA).sfcov"));
+  assert(!strcmp(fallback, "/.superfw/Metal Slug Advance (USA).sfcov"));
+  assert(!cover_build_fallback_path(fallback, sizeof(fallback),
+                                    "/covers/Game.sfcov"));
+  assert(!cover_build_fallback_path(fallback, 12,
+                                    "/.superfw/covers/Game.sfcov"));
+
   char long_name[300];
   memset(long_name, 'a', sizeof(long_name));
   memcpy(&long_name[sizeof(long_name) - 5], ".gba", 5);
