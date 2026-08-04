@@ -210,15 +210,20 @@ bool cover_build_path(char *output, unsigned output_size, const char *rom_path) 
 
 bool cover_build_fallback_path(char *output, unsigned output_size,
                                const char *cover_path) {
-  const unsigned source_prefix_len = sizeof(COVER_DIRECTORY) - 1;
+  static const char suffix[] = ".sfcov";
   const unsigned fallback_prefix_len = sizeof(COVER_FALLBACK_DIRECTORY) - 1;
-  if (!output || !output_size || !cover_path ||
-      strncmp(cover_path, COVER_DIRECTORY, source_prefix_len))
+  if (!output || !output_size || !cover_path)
     return false;
 
-  const char *filename = cover_path + source_prefix_len;
+  const char *filename = cover_path;
+  for (const char *p = cover_path; *p; p++)
+    if (*p == '/' || *p == '\\')
+      filename = p + 1;
   unsigned filename_len = strlen(filename);
-  if (!filename_len || fallback_prefix_len + filename_len + 1 > output_size)
+  const unsigned suffix_len = sizeof(suffix) - 1;
+  if (filename_len <= suffix_len ||
+      strcmp(filename + filename_len - suffix_len, suffix) ||
+      fallback_prefix_len + filename_len + 1 > output_size)
     return false;
 
   memcpy(output, COVER_FALLBACK_DIRECTORY, fallback_prefix_len);
@@ -231,13 +236,14 @@ bool cover_build_short_fallback_path(char *output, unsigned output_size,
   static const char suffix[] = ".sfcov";
   static const char short_suffix[] = ".cov";
   static const char hex[] = "0123456789ABCDEF";
-  const unsigned source_prefix_len = sizeof(COVER_DIRECTORY) - 1;
   const unsigned fallback_prefix_len = sizeof(COVER_FALLBACK_DIRECTORY) - 1;
-  if (!output || !cover_path ||
-      strncmp(cover_path, COVER_DIRECTORY, source_prefix_len))
+  if (!output || !cover_path)
     return false;
 
-  const char *filename = cover_path + source_prefix_len;
+  const char *filename = cover_path;
+  for (const char *p = cover_path; *p; p++)
+    if (*p == '/' || *p == '\\')
+      filename = p + 1;
   unsigned filename_len = strlen(filename);
   const unsigned suffix_len = sizeof(suffix) - 1;
   const unsigned required_size = fallback_prefix_len + 8 + sizeof(short_suffix);
@@ -328,23 +334,28 @@ uint32_t cover_fatfs_last_results(void) {
 
 t_cover_read_result cover_fatfs_read(const char *path, uint8_t *data,
                                      unsigned capacity, unsigned *size) {
+  char fallback_path[COVER_PATH_MAX];
+  char short_path[COVER_PATH_MAX];
+  bool has_fallback = cover_build_fallback_path(
+      fallback_path, sizeof(fallback_path), path);
+  bool has_short = cover_build_short_fallback_path(
+      short_path, sizeof(short_path), path);
+
   FIL file;
   FRESULT result = f_open(&file, path, FA_READ);
   cover_primary_result = result;
   cover_fallback_result = 0xFF;
   cover_short_result = 0xFF;
   if (result == FR_NO_FILE || result == FR_NO_PATH) {
-    char fallback_path[COVER_PATH_MAX];
-    if (!cover_build_fallback_path(fallback_path, sizeof(fallback_path), path))
-      return CoverReadMissing;
-    result = f_open(&file, fallback_path, FA_READ);
-    cover_fallback_result = result;
-    if (result == FR_NO_FILE || result == FR_NO_PATH) {
-      if (!cover_build_short_fallback_path(fallback_path,
-                                           sizeof(fallback_path), path))
-        return CoverReadMissing;
+    if (has_fallback) {
       result = f_open(&file, fallback_path, FA_READ);
-      cover_short_result = result;
+      cover_fallback_result = result;
+    }
+    if (result == FR_NO_FILE || result == FR_NO_PATH) {
+      if (has_short) {
+        result = f_open(&file, short_path, FA_READ);
+        cover_short_result = result;
+      }
       if (result == FR_NO_FILE || result == FR_NO_PATH)
         return CoverReadMissing;
     }

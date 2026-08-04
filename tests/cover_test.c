@@ -114,13 +114,22 @@ static void test_path_lookup(void) {
       fallback, sizeof(fallback),
       "/.superfw/covers/Metal Slug Advance (USA).sfcov"));
   assert(!strcmp(fallback, "/.superfw/Metal Slug Advance (USA).sfcov"));
+  assert(cover_build_fallback_path(fallback, sizeof(fallback),
+                                   "/covers/Game.sfcov"));
+  assert(!strcmp(fallback, "/.superfw/Game.sfcov"));
+  assert(cover_build_fallback_path(fallback, sizeof(fallback),
+                                   "C:\\covers\\Game.sfcov"));
+  assert(!strcmp(fallback, "/.superfw/Game.sfcov"));
   assert(!cover_build_fallback_path(fallback, sizeof(fallback),
-                                    "/covers/Game.sfcov"));
+                                    "/covers/Game.png"));
   assert(!cover_build_fallback_path(fallback, 12,
                                     "/.superfw/covers/Game.sfcov"));
   assert(cover_build_short_fallback_path(
       fallback, sizeof(fallback),
       "/.superfw/covers/Metal Slug Advance (USA).sfcov"));
+  assert(!strcmp(fallback, "/.superfw/24929DEE.cov"));
+  assert(cover_build_short_fallback_path(
+      fallback, sizeof(fallback), "/covers/Metal Slug Advance (USA).sfcov"));
   assert(!strcmp(fallback, "/.superfw/24929DEE.cov"));
   assert(cover_build_short_fallback_path(
       fallback, sizeof(fallback),
