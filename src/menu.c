@@ -417,7 +417,6 @@ typedef struct {
   t_centry fentries[BROWSER_MAXFN_CNT];
   t_rentry rentries[RECENT_MAXFN_CNT];
   t_reg_entry_max nordata;
-  t_cover_cache cover;
 } t_sdram_state;
 
 _Static_assert (sizeof(t_sdram_state) <= 14.5*1024*1024, "scratch SDRAM doesn't exceed 14.5MB");
@@ -429,6 +428,12 @@ t_sdram_state *sdr_state = &demo_sdr_state;
 t_sdram_state *sdr_state = (t_sdram_state*)0x08000000;
 #endif
 uint8_t *hiscratch = (uint8_t*)ROM_HISCRATCH_U8;
+
+// FatFs enables the SuperCard SD interface while opening and reading files.
+// That remaps the cartridge address space, so neither the pathname passed to
+// FatFs nor its destination buffer may live in SuperCard SDRAM at 0x08000000.
+// Keep the complete cover cache in GBA EWRAM instead.
+static t_cover_cache menu_cover_cache __attribute__((section(".sbss")));
 
 typedef struct {
   uint16_t x, y;
@@ -1522,22 +1527,22 @@ static void render_cover_panel(volatile uint8_t *frame) {
   draw_box_outline(frame, COVER_PANEL_LEFT, SCREEN_WIDTH, COVER_PANEL_TOP,
                    COVER_IMAGE_TOP + COVER_HEIGHT + 2, FG_COLOR);
 
-  if (sdr_state->cover.state == CoverReady) {
-    const uint8_t *pixels = cover_cache_pixels(&sdr_state->cover);
+  if (menu_cover_cache.state == CoverReady) {
+    const uint8_t *pixels = cover_cache_pixels(&menu_cover_cache);
     for (unsigned row = 0; row < COVER_HEIGHT; row++)
       dma_memcpy16(&frame[(COVER_IMAGE_TOP + row) * SCREEN_WIDTH + COVER_IMAGE_LEFT],
                    &pixels[row * COVER_WIDTH], COVER_WIDTH / 2);
   } else {
     char diagnostic[16];
-    const char *message = sdr_state->cover.state == CoverPending ? "Loading..." :
-                          sdr_state->cover.state == CoverMissing ? "No cover" :
-                          sdr_state->cover.state == CoverInvalid ? "Bad cover" :
-                          sdr_state->cover.state == CoverIoError ? "SD error" : NULL;
+    const char *message = menu_cover_cache.state == CoverPending ? "Loading..." :
+                          menu_cover_cache.state == CoverMissing ? "No cover" :
+                          menu_cover_cache.state == CoverInvalid ? "Bad cover" :
+                          menu_cover_cache.state == CoverIoError ? "SD error" : NULL;
 #ifdef __GBA__
-    if (sdr_state->cover.state == CoverMissing) {
+    if (menu_cover_cache.state == CoverMissing) {
       uint32_t results = cover_fatfs_last_results();
       if ((results & 0xFF) != 0xFF) {
-        npf_snprintf(diagnostic, sizeof(diagnostic), "R5 %u/%u/%u",
+        npf_snprintf(diagnostic, sizeof(diagnostic), "R6 %u/%u/%u",
                      results & 0xFF, (results >> 8) & 0xFF,
                      (results >> 16) & 0xFF);
         message = diagnostic;
@@ -2231,22 +2236,22 @@ static void menu_cover_request_selected() {
   }
 
   if (rom_path)
-    cover_cache_request(&sdr_state->cover, rom_path, systime());
+    cover_cache_request(&menu_cover_cache, rom_path, systime());
   else
-    cover_cache_clear(&sdr_state->cover);
+    cover_cache_clear(&menu_cover_cache);
 }
 
 void menu_update() {
-  unsigned previous_state = sdr_state->cover.state;
+  unsigned previous_state = menu_cover_cache.state;
 #ifdef COVER_ART_DEMO
-  cover_cache_poll(&sdr_state->cover, systime(), cover_demo_read);
+  cover_cache_poll(&menu_cover_cache, systime(), cover_demo_read);
 #else
-  cover_cache_poll(&sdr_state->cover, systime(), cover_fatfs_read);
+  cover_cache_poll(&menu_cover_cache, systime(), cover_fatfs_read);
 #endif
-  if (previous_state != CoverReady && sdr_state->cover.state == CoverReady)
+  if (previous_state != CoverReady && menu_cover_cache.state == CoverReady)
     dma_memcpy16(&MEM_PALETTE[COVER_PALETTE_BASE],
-                 cover_cache_palette(&sdr_state->cover),
-                 sdr_state->cover.info.palette_count);
+                 cover_cache_palette(&menu_cover_cache),
+                 menu_cover_cache.info.palette_count);
 }
 
 static void menu_setup_display() {
@@ -2306,7 +2311,7 @@ void menu_demo_init() {
   }
   smenu.recent.maxentries = ARRAY_SIZE(recent_paths);
 
-  cover_cache_init(&sdr_state->cover);
+  cover_cache_init(&menu_cover_cache);
   reload_theme(2);  // High-contrast blue theme for reference screenshots.
   smenu.menu_tab = MENUTAB_ROMBROWSE;
   menu_cover_request_selected();
@@ -2318,7 +2323,7 @@ void menu_init(int sram_testres) {
   // Reset to ROM browser and SD card root.
   memset(&smenu, 0, sizeof(smenu));
   memset(&spop, 0, sizeof(spop));
-  cover_cache_init(&sdr_state->cover);
+  cover_cache_init(&menu_cover_cache);
 
   // Reset the file browser as well.
   strcpy(smenu.browser.cpath, "/");
