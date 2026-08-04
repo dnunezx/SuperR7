@@ -29,7 +29,8 @@ not attempt to show a grid of multiple covers.
 | 2: Cover format and converter | Complete | Version 1 format, converter, batch mode, previews, strict validation, documentation, and automated tests implemented. |
 | 3: Firmware loader and cache | Complete | Strict firmware parser, basename lookup, fixed SDRAM cache, deferred SD loading, Browse/Recent selection tracking, and host tests implemented. |
 | 4: Browser integration | Complete | Selected covers, theme-aware placeholders, clipped selectors, and narrower Browse/Recent lists are implemented. Emulator and hardware visual verification remain in Phases 5-6. |
-| 5-7 | Not started | Phase 5 PC and emulator verification is next. |
+| 5: PC and emulator verification | Complete | A standard-GBA demo ROM now exercises the real menu in mGBA; scripted visual checks cover navigation, valid/missing/corrupt art, Browse/Recent parity, panel bounds, and stable frame swaps. |
+| 6-7 | Not started | Phase 6 SuperCard SD hardware verification is next. |
 
 ## Proposed design
 
@@ -257,6 +258,55 @@ Acceptance criteria:
 - Menu controls, cover changes, missing art, and invalid art work in mGBA.
 - No drawing occurs outside the intended panel.
 - Frame swapping shows no visible partial updates.
+
+Phase 5 implementation result:
+
+- Added an emulator-only standard GBA ROM target that copies the real firmware
+  payload to EWRAM, bypasses SuperCard probing, and enters the existing menu
+  code. Compile-time guards keep all demo data and behavior out of normal
+  firmware builds.
+- The demo supplies synthetic Browse and Recent Games entries plus two valid
+  covers, one missing cover, and one structurally valid cover with a corrupt
+  CRC. A host test confirms those fixtures pass through the production parser
+  and produce the intended cache states.
+- Added a header-only mode to the firmware image fixer. Production images keep
+  their existing SuperFW size/hash fields, while the normal GBA demo preserves
+  executable code in that header-adjacent area.
+- An mGBA Lua script holds real GBA controls to navigate Browse and Recent
+  Games and captures seven native 240-by-160 states. It records the displayed
+  Mode 4 framebuffer and palette directly; the visual test reconstructs PNG
+  reference screenshots from those bytes.
+- Automated assertions confirm both covers use the expected color range, cover
+  changes stay inside the right-hand panel, a pending frame and its completed
+  frame are identical outside that panel, two settled frames match exactly,
+  missing and corrupt placeholders are distinct and theme-limited, and Recent
+  Games renders the same Aurora cover as Browse.
+- The demo and visual gate run with the official mGBA development headless
+  frontend. See [the emulator demo guide](docs/cover-emulator-demo.md) for local
+  commands and artifact details.
+
+Phase 5 production measurements for commit
+`7a7dd90b3cadcb29d95d11df2b8f5cabc023995a`:
+
+| Item | Phase 4 | Phase 5 | Change |
+| --- | ---: | ---: | ---: |
+| Final SD firmware | 518,144 bytes | 517,632 bytes | -512 bytes |
+| Remaining 512 KiB flash space | 6,144 bytes | 6,656 bytes | +512 bytes |
+| Main firmware before compression | 218,792 bytes | 218,792 bytes | unchanged |
+| Main firmware after compression | 104,670 bytes | 104,637 bytes | -33 bytes |
+| EWRAM usage | 218,792 bytes (85.13%) | 218,792 bytes (85.13%) | unchanged |
+| IWRAM usage | 11,144 bytes (34.01%) | 11,144 bytes (34.01%) | unchanged |
+
+The small compressed-size change comes from per-commit version data; Phase 5's
+emulator support adds no code or data to the production firmware. The separate
+demo payload uses 222,584 bytes of EWRAM (86.60%) and 10,568 bytes of IWRAM
+(32.25%). Its standard GBA wrapper is 206,848 bytes.
+
+Verification runs:
+
+- [Phase 5 host tests](https://github.com/dnunezx/superfw/actions/runs/30871187882)
+- [Phase 5 mGBA demo, visual checks, ROM, and screenshots](https://github.com/dnunezx/superfw/actions/runs/30871187871)
+- [Phase 5 production SD firmware build and artifacts](https://github.com/dnunezx/superfw/actions/runs/30871187868)
 
 ### Phase 6: SuperCard SD hardware verification
 
