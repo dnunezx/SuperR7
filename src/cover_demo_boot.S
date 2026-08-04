@@ -43,9 +43,9 @@ demo_boot:
   lsr r2, r2, #2
   swi 0x0C0000                 /* CpuFastSet: ROM to EWRAM. */
 
-  ldr r0, =0x04000000
+  ldr r0, =0x03007FFA
   mov r1, #1
-  strb r1, [r0, #-6]           /* SoftReset target: EWRAM. */
+  strb r1, [r0]                /* SoftReset target: EWRAM. */
   swi 0x000000
 
 .pool
