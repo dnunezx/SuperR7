@@ -9,13 +9,40 @@ from PIL import Image, ImageChops
 SCREENSHOT_DIR = Path(os.environ.get("COVER_DEMO_SCREENSHOTS", "artifacts/cover-demo"))
 PANEL_BOX = (164, 26, 240, 134)
 PANEL_IMAGE = (166, 28, 238, 132)
+FRAME_SIZE = 512 + 240 * 160
+
+
+def render_frame(path: Path) -> Image.Image:
+    data = path.read_bytes()
+    if len(data) != FRAME_SIZE:
+        raise AssertionError(f"{path.name} is {len(data)} bytes, expected {FRAME_SIZE}")
+
+    palette = []
+    for offset in range(0, 512, 2):
+        color = int.from_bytes(data[offset : offset + 2], "little")
+        palette.append(
+            (
+                (color & 0x1F) * 255 // 31,
+                ((color >> 5) & 0x1F) * 255 // 31,
+                ((color >> 10) & 0x1F) * 255 // 31,
+            )
+        )
+
+    image = Image.new("RGB", (240, 160))
+    image.putdata(palette[index] for index in data[512:])
+    return image
 
 
 def load(name: str) -> Image.Image:
     path = SCREENSHOT_DIR / f"{name}.png"
-    if not path.exists():
-        raise AssertionError(f"missing emulator screenshot: {path}")
-    image = Image.open(path).convert("RGB")
+    frame_path = SCREENSHOT_DIR / f"{name}.frame"
+    if frame_path.exists():
+        image = render_frame(frame_path)
+        image.save(path)
+    elif path.exists():
+        image = Image.open(path).convert("RGB")
+    else:
+        raise AssertionError(f"missing emulator frame dump: {frame_path}")
     if image.size != (240, 160):
         raise AssertionError(f"{path.name} is {image.size}, expected native 240x160")
     return image

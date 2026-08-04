@@ -2,7 +2,16 @@ local output = script.dir .. "/../artifacts/cover-demo/"
 local start_frame = nil
 
 local function shot(name)
-  emu:screenshot(output .. name .. ".png")
+  local display_control = emu:read16(0x04000000)
+  local page = 0x06000000
+  if math.floor(display_control / 0x10) % 2 == 1 then
+    page = page + 0xA000
+  end
+
+  local frame = assert(io.open(output .. name .. ".frame", "wb"))
+  frame:write(emu:readRange(0x05000000, 512))
+  frame:write(emu:readRange(page, 240 * 160))
+  frame:close()
 end
 
 local function press(key)
