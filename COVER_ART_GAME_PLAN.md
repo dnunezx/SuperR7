@@ -28,7 +28,8 @@ not attempt to show a grid of multiple covers.
 | 1: Clean baseline | Complete | SD build and host tests pass; baseline sizes recorded. Physical smoke test remains pending. |
 | 2: Cover format and converter | Complete | Version 1 format, converter, batch mode, previews, strict validation, documentation, and automated tests implemented. |
 | 3: Firmware loader and cache | Complete | Strict firmware parser, basename lookup, fixed SDRAM cache, deferred SD loading, Browse/Recent selection tracking, and host tests implemented. |
-| 4-7 | Not started | Phase 4 browser rendering is next. |
+| 4: Browser integration | Complete | Selected covers, theme-aware placeholders, clipped selectors, and narrower Browse/Recent lists are implemented. Emulator and hardware visual verification remain in Phases 5-6. |
+| 5-7 | Not started | Phase 5 PC and emulator verification is next. |
 
 ## Proposed design
 
@@ -202,6 +203,46 @@ Acceptance criteria:
 - Covers render without palette corruption or flicker.
 - Long filenames remain understandable.
 - Existing browser controls and popups remain functional.
+
+Phase 4 implementation result:
+
+- Added a 72-by-104 cover panel at the right edge of Browse and Recent Games,
+  surrounded by a two-pixel border using the active UI theme.
+- The file list now occupies the left 164 pixels. Long selected names retain
+  their scrolling animation, while other long names retain ellipsis handling.
+- File sizes remain right-aligned inside the narrower Browse list.
+- The selection highlight stops before the cover panel, preventing the OBJ
+  selector strip from tinting or obscuring artwork.
+- The full-width tab bar, item count, and bottom directory bar are unchanged.
+- Ready covers use aligned 16-bit DMA row copies into the Mode 4 framebuffer.
+- A cover palette is installed once when loading completes, not on every frame.
+- Pending, missing, invalid, and SD-error placeholders use normal theme colors;
+  folders and unsupported files show an empty framed panel.
+- Popups keep their existing full-screen drawing path, and covers resume when a
+  popup closes.
+- The cache tests now confirm that changing selection immediately hides old
+  palette and pixel pointers, preventing stale artwork during the load delay.
+
+Phase 4 measurements for commit `5ef669eb2d7074bfd8aeca6472ad080078812c5d`:
+
+| Item | Phase 3 | Phase 4 | Change |
+| --- | ---: | ---: | ---: |
+| Final SD firmware | 517,632 bytes | 518,144 bytes | +512 bytes |
+| Remaining 512 KiB flash space | 6,656 bytes | 6,144 bytes | -512 bytes |
+| Main firmware before compression | 218,376 bytes | 218,792 bytes | +416 bytes |
+| Main firmware after compression | 104,349 bytes | 104,670 bytes | +321 bytes |
+| EWRAM usage | 218,376 bytes (84.96%) | 218,792 bytes (85.13%) | +416 bytes |
+| IWRAM usage | 11,144 bytes (34.01%) | 11,144 bytes (34.01%) | unchanged |
+
+Verification runs:
+
+- [Phase 4 host tests](https://github.com/dnunezx/superfw/actions/runs/30868430594)
+- [Phase 4 SD firmware build and artifacts](https://github.com/dnunezx/superfw/actions/runs/30868430600)
+
+The ARM build and host tests verify the implementation and memory bounds. The
+remaining visual acceptance checks (palette appearance, flicker, and interaction
+screenshots) require the emulator demo in Phase 5 and the SD flashcard in Phase
+6, as planned.
 
 ### Phase 5: PC and emulator verification
 
