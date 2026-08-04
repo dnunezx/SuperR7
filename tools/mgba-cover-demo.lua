@@ -28,37 +28,37 @@ callbacks:add("frame", function()
   end
   local frame = emu:currentFrame() - start_frame
 
-  if frame == 60 then
+  if frame == 100 then
     shot("browse-aurora-ready")
-  elseif frame == 65 then
+  elseif frame == 105 then
     press(C.GBA_KEY.DOWN)
-  elseif frame == 66 then
+  elseif frame == 110 then
     release(C.GBA_KEY.DOWN)
-  elseif frame == 68 then
+  elseif frame == 120 then
     shot("browse-checker-pending")
-  elseif frame == 90 then
+  elseif frame == 200 then
     shot("browse-checker-ready")
-  elseif frame == 95 then
+  elseif frame == 210 then
     shot("browse-checker-stable")
-  elseif frame == 100 then
+  elseif frame == 215 then
     press(C.GBA_KEY.DOWN)
-  elseif frame == 101 then
+  elseif frame == 220 then
     release(C.GBA_KEY.DOWN)
-  elseif frame == 125 then
+  elseif frame == 310 then
     shot("browse-missing")
-  elseif frame == 130 then
+  elseif frame == 315 then
     press(C.GBA_KEY.DOWN)
-  elseif frame == 131 then
+  elseif frame == 320 then
     release(C.GBA_KEY.DOWN)
-  elseif frame == 155 then
+  elseif frame == 410 then
     shot("browse-invalid")
-  elseif frame == 160 then
+  elseif frame == 415 then
     press(C.GBA_KEY.L)
-  elseif frame == 161 then
+  elseif frame == 420 then
     release(C.GBA_KEY.L)
-  elseif frame == 185 then
+  elseif frame == 520 then
     shot("recent-aurora-ready")
-  elseif frame == 190 then
+  elseif frame == 530 then
     local marker = io.open(output .. "complete.txt", "w")
     marker:write("mGBA cover demo completed\n")
     marker:close()

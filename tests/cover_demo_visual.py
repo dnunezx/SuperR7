@@ -29,7 +29,7 @@ def render_frame(path: Path) -> Image.Image:
         )
 
     image = Image.new("RGB", (240, 160))
-    image.putdata(palette[index] for index in data[512:])
+    image.putdata([palette[index] for index in data[512:]])
     return image
 
 
