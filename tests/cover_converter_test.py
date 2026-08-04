@@ -24,10 +24,20 @@ from tools.sfcov import (
     VERSION,
     WIDTH,
     bgr555_to_rgb888,
+    fallback_filename,
 )
 
 
 class CoverConverterTest(unittest.TestCase):
+    def test_fallback_filename_is_short_and_path_independent(self):
+        name = fallback_filename("/Games/Metal Slug Advance (USA).gba")
+        self.assertEqual(name, "24929DEE.cov")
+        self.assertEqual(name, fallback_filename("Metal Slug Advance (USA).gba"))
+        self.assertEqual(
+            fallback_filename("Legend of Zelda, The - The Minish Cap (USA).gba"),
+            "A4077507.cov",
+        )
+
     def test_solid_image_round_trip(self):
         source = Image.new("RGB", (600, 900), (248, 16, 8))
         cover = image_to_cover(source, dither="none")

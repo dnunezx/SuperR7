@@ -65,6 +65,8 @@ bool cover_validate(const uint8_t *data, unsigned size, t_cover_info *info);
 bool cover_build_path(char *output, unsigned output_size, const char *rom_path);
 bool cover_build_fallback_path(char *output, unsigned output_size,
                                const char *cover_path);
+bool cover_build_short_fallback_path(char *output, unsigned output_size,
+                                     const char *cover_path);
 
 void cover_cache_init(t_cover_cache *cache);
 void cover_cache_clear(t_cover_cache *cache);
@@ -77,6 +79,7 @@ const uint8_t *cover_cache_pixels(const t_cover_cache *cache);
 #ifdef __GBA__
 t_cover_read_result cover_fatfs_read(const char *path, uint8_t *data,
                                      unsigned capacity, unsigned *size);
+uint32_t cover_fatfs_last_results(void);
 #endif
 #ifdef COVER_ART_DEMO
 t_cover_read_result cover_demo_read(const char *path, uint8_t *data,

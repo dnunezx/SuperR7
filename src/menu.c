@@ -1528,10 +1528,22 @@ static void render_cover_panel(volatile uint8_t *frame) {
       dma_memcpy16(&frame[(COVER_IMAGE_TOP + row) * SCREEN_WIDTH + COVER_IMAGE_LEFT],
                    &pixels[row * COVER_WIDTH], COVER_WIDTH / 2);
   } else {
+    char diagnostic[16];
     const char *message = sdr_state->cover.state == CoverPending ? "Loading..." :
                           sdr_state->cover.state == CoverMissing ? "No cover" :
                           sdr_state->cover.state == CoverInvalid ? "Bad cover" :
                           sdr_state->cover.state == CoverIoError ? "SD error" : NULL;
+#ifdef __GBA__
+    if (sdr_state->cover.state == CoverMissing) {
+      uint32_t results = cover_fatfs_last_results();
+      if ((results & 0xFF) != 0xFF) {
+        npf_snprintf(diagnostic, sizeof(diagnostic), "N%u/%u/%u",
+                     results & 0xFF, (results >> 8) & 0xFF,
+                     (results >> 16) & 0xFF);
+        message = diagnostic;
+      }
+    }
+#endif
     if (message)
       draw_central_text(message, frame, COVER_IMAGE_LEFT + COVER_WIDTH / 2,
                         COVER_IMAGE_TOP + COVER_HEIGHT / 2 - 4);

@@ -88,6 +88,9 @@ Game-code lookup may be added in a later format-independent phase.
 The firmware first checks the organized `/.superfw/covers/` directory. For
 compatibility with SD implementations that fail to traverse that new nested
 directory, it retries the same filename directly under `/.superfw/`.
+If long-name lookup also fails, the final retry uses an 8.3-safe filename made
+from the uppercase eight-digit CRC-32 of the UTF-8 ROM basename (without its
+extension), followed by `.cov`, directly under `/.superfw/`.
 
 ## Validation requirements
 

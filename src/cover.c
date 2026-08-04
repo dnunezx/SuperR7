@@ -226,6 +226,34 @@ bool cover_build_fallback_path(char *output, unsigned output_size,
   return true;
 }
 
+bool cover_build_short_fallback_path(char *output, unsigned output_size,
+                                     const char *cover_path) {
+  static const char suffix[] = ".sfcov";
+  static const char short_suffix[] = ".cov";
+  static const char hex[] = "0123456789ABCDEF";
+  const unsigned source_prefix_len = sizeof(COVER_DIRECTORY) - 1;
+  const unsigned fallback_prefix_len = sizeof(COVER_FALLBACK_DIRECTORY) - 1;
+  if (!output || !cover_path ||
+      strncmp(cover_path, COVER_DIRECTORY, source_prefix_len))
+    return false;
+
+  const char *filename = cover_path + source_prefix_len;
+  unsigned filename_len = strlen(filename);
+  const unsigned suffix_len = sizeof(suffix) - 1;
+  const unsigned required_size = fallback_prefix_len + 8 + sizeof(short_suffix);
+  if (filename_len <= suffix_len || output_size < required_size ||
+      strcmp(filename + filename_len - suffix_len, suffix))
+    return false;
+
+  unsigned stem_len = filename_len - suffix_len;
+  uint32_t hash = cover_crc32((const uint8_t *)filename, stem_len);
+  memcpy(output, COVER_FALLBACK_DIRECTORY, fallback_prefix_len);
+  for (unsigned i = 0; i < 8; i++)
+    output[fallback_prefix_len + i] = hex[(hash >> (28 - i * 4)) & 0xF];
+  memcpy(output + fallback_prefix_len + 8, short_suffix, sizeof(short_suffix));
+  return true;
+}
+
 void cover_cache_clear(t_cover_cache *cache) {
   cache->path[0] = 0;
   cache->file_size = 0;
@@ -289,17 +317,37 @@ const uint8_t *cover_cache_pixels(const t_cover_cache *cache) {
 }
 
 #ifdef __GBA__
+static uint8_t cover_primary_result = 0xFF;
+static uint8_t cover_fallback_result = 0xFF;
+static uint8_t cover_short_result = 0xFF;
+
+uint32_t cover_fatfs_last_results(void) {
+  return cover_primary_result | ((uint32_t)cover_fallback_result << 8) |
+         ((uint32_t)cover_short_result << 16);
+}
+
 t_cover_read_result cover_fatfs_read(const char *path, uint8_t *data,
                                      unsigned capacity, unsigned *size) {
   FIL file;
   FRESULT result = f_open(&file, path, FA_READ);
+  cover_primary_result = result;
+  cover_fallback_result = 0xFF;
+  cover_short_result = 0xFF;
   if (result == FR_NO_FILE || result == FR_NO_PATH) {
     char fallback_path[COVER_PATH_MAX];
     if (!cover_build_fallback_path(fallback_path, sizeof(fallback_path), path))
       return CoverReadMissing;
     result = f_open(&file, fallback_path, FA_READ);
-    if (result == FR_NO_FILE || result == FR_NO_PATH)
-      return CoverReadMissing;
+    cover_fallback_result = result;
+    if (result == FR_NO_FILE || result == FR_NO_PATH) {
+      if (!cover_build_short_fallback_path(fallback_path,
+                                           sizeof(fallback_path), path))
+        return CoverReadMissing;
+      result = f_open(&file, fallback_path, FA_READ);
+      cover_short_result = result;
+      if (result == FR_NO_FILE || result == FR_NO_PATH)
+        return CoverReadMissing;
+    }
   }
   if (result != FR_OK)
     return CoverReadIoError;

@@ -51,6 +51,17 @@ def bgr555_to_rgb888(color: int) -> tuple[int, int, int]:
     )
 
 
+def fallback_filename(rom_name: str) -> str:
+    """Return the firmware's 8.3-safe fallback cover filename."""
+
+    basename = rom_name.replace("\\", "/").rsplit("/", 1)[-1]
+    dot = basename.rfind(".")
+    if dot <= 0:
+        raise ValueError("ROM filename must include an extension")
+    checksum = zlib.crc32(basename[:dot].encode("utf-8")) & 0xFFFFFFFF
+    return f"{checksum:08X}.cov"
+
+
 @dataclass(frozen=True)
 class Cover:
     """A validated, framebuffer-ready cover."""
