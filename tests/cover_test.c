@@ -122,7 +122,7 @@ static void test_path_lookup(void) {
   assert(!strcmp(fallback, "/Game.sfcov"));
   assert(!cover_build_fallback_path(fallback, sizeof(fallback),
                                     "/covers/Game.png"));
-  assert(!cover_build_fallback_path(fallback, 12,
+  assert(!cover_build_fallback_path(fallback, 11,
                                     "/.superfw/covers/Game.sfcov"));
   assert(cover_build_short_fallback_path(
       fallback, sizeof(fallback),
