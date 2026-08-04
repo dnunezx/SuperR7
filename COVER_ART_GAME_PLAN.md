@@ -27,8 +27,8 @@ not attempt to show a grid of multiple covers.
 | --- | --- | --- |
 | 1: Clean baseline | Complete | SD build and host tests pass; baseline sizes recorded. Physical smoke test remains pending. |
 | 2: Cover format and converter | Complete | Version 1 format, converter, batch mode, previews, strict validation, documentation, and automated tests implemented. |
-| 3: Firmware loader and cache | Not started | Next phase. |
-| 4-7 | Not started | Pending the firmware loader. |
+| 3: Firmware loader and cache | Complete | Strict firmware parser, basename lookup, fixed SDRAM cache, deferred SD loading, Browse/Recent selection tracking, and host tests implemented. |
+| 4-7 | Not started | Phase 4 browser rendering is next. |
 
 ## Proposed design
 
@@ -154,6 +154,41 @@ Acceptance criteria:
 - Corrupt and missing files do not crash, hang, or leak stale artwork.
 - Selecting the same game repeatedly does not reread its cover.
 - Rapid scrolling remains responsive.
+
+Phase 3 result:
+
+- Added an isolated firmware module for cover lookup, parsing, loading, cache
+  state, and render-ready palette/pixel access.
+- Cover paths are derived safely from supported ROM basenames and resolved under
+  `/.superfw/covers/`.
+- One 8,232-byte fixed cache lives in SuperCard SDRAM; cover data does not use
+  the GBA heap or add artwork to the firmware image.
+- A changed selection immediately invalidates stale artwork, then waits 180 ms
+  before performing one SD read outside the per-frame drawing path.
+- Ready, pending, missing, invalid, and SD I/O failure states are kept separate.
+- Browser folders and unsupported file types clear the cache instead of
+  attempting a cover lookup.
+- Host tests exercise the CRC implementation, every major malformed-header and
+  payload case, path matching, missing/I/O/oversized results, cache reuse,
+  delayed loading, and system-timer wraparound.
+- Browse and Recent Games now schedule covers, but Phase 3 deliberately does not
+  draw them or alter the menu palette; that remains Phase 4.
+
+Phase 3 measurements for commit `85f274e1bddc122f7a1f90db79e7697379036ed5`:
+
+| Item | Phase 2 | Phase 3 | Change |
+| --- | ---: | ---: | ---: |
+| Final SD firmware | 516,608 bytes | 517,632 bytes | +1,024 bytes |
+| Remaining 512 KiB flash space | 7,680 bytes | 6,656 bytes | -1,024 bytes |
+| Main firmware before compression | 217,100 bytes | 218,376 bytes | +1,276 bytes |
+| Main firmware after compression | 103,404 bytes | 104,349 bytes | +945 bytes |
+| EWRAM usage | 217,100 bytes (84.47%) | 218,376 bytes (84.96%) | +1,276 bytes |
+| IWRAM usage | 11,144 bytes (34.01%) | 11,144 bytes (34.01%) | unchanged |
+
+Verification runs:
+
+- [Phase 3 host tests](https://github.com/dnunezx/superfw/actions/runs/30867774492)
+- [Phase 3 SD firmware build and artifacts](https://github.com/dnunezx/superfw/actions/runs/30867774453)
 
 ### Phase 4: Browser integration
 
