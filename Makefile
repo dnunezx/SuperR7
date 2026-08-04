@@ -163,7 +163,7 @@ cover-demo.gba: firmware.demo.ewram.gba src/cover_demo_boot.S ldscripts/gba_cove
 	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -o cover-demo.elf src/cover_demo_boot.S \
 		-T ldscripts/gba_cover_demo.ld -nostartfiles -nostdlib
 	$(OBJCOPY) --output-target=binary cover-demo.elf cover-demo.gba
-	./tools/fw-fixer.py cover-demo.gba
+	./tools/fw-fixer.py --header-only cover-demo.gba
 
 firmware.demo.ewram.gba: $(INFILES) ingamemenu.payload superfw.dldi.payload directsave.payload ingame_trampoline.payload src/messages_data.h ldscripts/gba_ewram.ld.i
 	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -o firmware.demo.ewram.elf $(INFILES) \
