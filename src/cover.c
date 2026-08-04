@@ -279,20 +279,6 @@ void cover_cache_request(t_cover_cache *cache, const char *rom_path, uint32_t no
     cover_cache_clear(cache);
     return;
   }
-#if defined(__GBA__) && !defined(COVER_ART_DEMO)
-  /*
-   * Real SuperCard SD hardware can fail to traverse the cover directory. Keep
-   * the descriptive filename but place it at the card root, matching the same
-   * long-name behavior already proven by root-level ROM loading. The reader
-   * still derives the 8.3 alias as a fallback.
-   */
-  char root_path[COVER_PATH_MAX];
-  if (!cover_build_fallback_path(root_path, sizeof(root_path), path)) {
-    cover_cache_clear(cache);
-    return;
-  }
-  strcpy(path, root_path);
-#endif
   if (cache->state != CoverEmpty && !strcmp(cache->path, path))
     return;
 

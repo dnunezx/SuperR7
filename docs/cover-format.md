@@ -92,11 +92,11 @@ If long-name lookup also fails, the final retry uses an 8.3-safe filename made
 from the uppercase eight-digit CRC-32 of the UTF-8 ROM basename (without its
 extension), followed by `.cov`, at the SD-card root.
 
-On actual GBA hardware, the SD build uses the descriptive long filename at the
-card root as its canonical lookup path. This mirrors the root-level long-name
-behavior already used to load ROMs, avoids all directory traversal, and keeps
-the root-level 8.3 alias as a fallback. Host tests and the standalone visual
-demo retain the organized long-name path so all path forms remain covered.
+The organized long-name path is canonical on actual GBA hardware, in host
+tests, and in the standalone visual demo. The firmware keeps its pathname and
+image buffer in GBA EWRAM because the SuperCard temporarily remaps cartridge
+SDRAM while servicing SD reads. If the canonical lookup fails, the root-level
+long filename and 8.3 alias remain compatibility fallbacks.
 
 ## Validation requirements
 

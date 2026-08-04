@@ -324,6 +324,21 @@ Initial performance goals:
 - No repeated reads for an unchanged selection.
 - No regression in launching or saving games.
 
+Phase 6 hardware result:
+
+- Square covers for Metal Slug Advance and The Minish Cap render correctly on
+  a physical SuperCard SD in both Browse and Recent Games.
+- Rapid scrolling and cover switching remain responsive without stale or
+  corrupted artwork.
+- Both games launch normally, and an existing Minish Cap save was updated and
+  reloaded successfully after a power cycle.
+- Hardware diagnostics exposed a SuperCard mapping conflict: the first loader
+  kept its pathname and image destination in cartridge SDRAM, which becomes
+  inaccessible while the SD interface is mapped. R6 moved the complete cover
+  cache to GBA EWRAM and passed the physical hardware test.
+- Phase 7 restores `/.superfw/covers/` as the canonical hardware location and
+  retains root paths only as temporary compatibility fallbacks.
+
 ### Phase 7: Polish and release
 
 - Add a user setting to enable or disable cover art.

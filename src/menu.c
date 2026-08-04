@@ -1542,9 +1542,10 @@ static void render_cover_panel(volatile uint8_t *frame) {
     if (menu_cover_cache.state == CoverMissing) {
       uint32_t results = cover_fatfs_last_results();
       if ((results & 0xFF) != 0xFF) {
-        npf_snprintf(diagnostic, sizeof(diagnostic), "R6 %u/%u/%u",
-                     results & 0xFF, (results >> 8) & 0xFF,
-                     (results >> 16) & 0xFF);
+        npf_snprintf(diagnostic, sizeof(diagnostic), "R7 %u/%u/%u",
+                     (unsigned)(results & 0xFF),
+                     (unsigned)((results >> 8) & 0xFF),
+                     (unsigned)((results >> 16) & 0xFF));
         message = diagnostic;
       }
     }
