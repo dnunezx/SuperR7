@@ -92,6 +92,11 @@ If long-name lookup also fails, the final retry uses an 8.3-safe filename made
 from the uppercase eight-digit CRC-32 of the UTF-8 ROM basename (without its
 extension), followed by `.cov`, directly under `/.superfw/`.
 
+On actual GBA hardware, the SD build uses that 8.3-safe alias as its canonical
+lookup path. This avoids relying on long nested path resolution before a retry
+can occur. Host tests and the standalone visual demo retain the descriptive
+long-name path so both path forms remain covered.
+
 ## Validation requirements
 
 A reader must reject a cover before drawing it if any of the following is true:

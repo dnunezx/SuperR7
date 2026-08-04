@@ -1537,7 +1537,7 @@ static void render_cover_panel(volatile uint8_t *frame) {
     if (sdr_state->cover.state == CoverMissing) {
       uint32_t results = cover_fatfs_last_results();
       if ((results & 0xFF) != 0xFF) {
-        npf_snprintf(diagnostic, sizeof(diagnostic), "N%u/%u/%u",
+        npf_snprintf(diagnostic, sizeof(diagnostic), "R3 %u/%u/%u",
                      results & 0xFF, (results >> 8) & 0xFF,
                      (results >> 16) & 0xFF);
         message = diagnostic;

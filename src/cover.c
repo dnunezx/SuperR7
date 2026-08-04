@@ -279,6 +279,17 @@ void cover_cache_request(t_cover_cache *cache, const char *rom_path, uint32_t no
     cover_cache_clear(cache);
     return;
   }
+#if defined(__GBA__) && !defined(COVER_ART_DEMO)
+  /*
+   * Real SuperCard SD hardware can fail before a long nested path reaches the
+   * fallback logic. Use the deterministic 8.3 alias as the canonical hardware
+   * lookup, while retaining long paths for host and visual-demo coverage.
+   */
+  if (!cover_build_short_fallback_path(path, sizeof(path), path)) {
+    cover_cache_clear(cache);
+    return;
+  }
+#endif
   if (cache->state != CoverEmpty && !strcmp(cache->path, path))
     return;
 
@@ -326,6 +337,8 @@ const uint8_t *cover_cache_pixels(const t_cover_cache *cache) {
 static uint8_t cover_primary_result = 0xFF;
 static uint8_t cover_fallback_result = 0xFF;
 static uint8_t cover_short_result = 0xFF;
+static char cover_fallback_path[COVER_PATH_MAX];
+static char cover_short_path[COVER_PATH_MAX];
 
 uint32_t cover_fatfs_last_results(void) {
   return cover_primary_result | ((uint32_t)cover_fallback_result << 8) |
@@ -334,12 +347,10 @@ uint32_t cover_fatfs_last_results(void) {
 
 t_cover_read_result cover_fatfs_read(const char *path, uint8_t *data,
                                      unsigned capacity, unsigned *size) {
-  char fallback_path[COVER_PATH_MAX];
-  char short_path[COVER_PATH_MAX];
   bool has_fallback = cover_build_fallback_path(
-      fallback_path, sizeof(fallback_path), path);
+      cover_fallback_path, sizeof(cover_fallback_path), path);
   bool has_short = cover_build_short_fallback_path(
-      short_path, sizeof(short_path), path);
+      cover_short_path, sizeof(cover_short_path), path);
 
   FIL file;
   FRESULT result = f_open(&file, path, FA_READ);
@@ -348,12 +359,12 @@ t_cover_read_result cover_fatfs_read(const char *path, uint8_t *data,
   cover_short_result = 0xFF;
   if (result == FR_NO_FILE || result == FR_NO_PATH) {
     if (has_fallback) {
-      result = f_open(&file, fallback_path, FA_READ);
+      result = f_open(&file, cover_fallback_path, FA_READ);
       cover_fallback_result = result;
     }
     if (result == FR_NO_FILE || result == FR_NO_PATH) {
       if (has_short) {
-        result = f_open(&file, short_path, FA_READ);
+        result = f_open(&file, cover_short_path, FA_READ);
         cover_short_result = result;
       }
       if (result == FR_NO_FILE || result == FR_NO_PATH)

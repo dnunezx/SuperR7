@@ -135,6 +135,9 @@ static void test_path_lookup(void) {
       fallback, sizeof(fallback),
       "/.superfw/covers/Legend of Zelda, The - The Minish Cap (USA).sfcov"));
   assert(!strcmp(fallback, "/.superfw/A4077507.cov"));
+  strcpy(path, "/.superfw/covers/Metal Slug Advance (USA).sfcov");
+  assert(cover_build_short_fallback_path(path, sizeof(path), path));
+  assert(!strcmp(path, "/.superfw/24929DEE.cov"));
   assert(!cover_build_short_fallback_path(
       fallback, sizeof(fallback), "/.superfw/covers/Game.png"));
   assert(!cover_build_short_fallback_path(
