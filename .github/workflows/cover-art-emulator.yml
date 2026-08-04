@@ -30,7 +30,7 @@ jobs:
           sudo apt-get install -y \
             "$(find /tmp/mgba -name libmgba.deb -print -quit)" \
             "$(find /tmp/mgba -name mgba-headless.deb -print -quit)"
-          mgba-headless --version
+          dpkg-query -W -f='${Version}\n' mgba-headless
 
       - name: Capture scripted emulator states
         run: |
