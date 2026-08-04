@@ -38,7 +38,9 @@ demo_boot:
 
   ldr r0, =demo_payload
   ldr r1, =EWRAM_PAYLOAD
-  ldr r2, =((demo_payload_end - demo_payload) / 4)
+  ldr r3, =demo_payload_end
+  sub r2, r3, r0
+  lsr r2, r2, #2
   swi 0x0C0000                 /* CpuFastSet: ROM to EWRAM. */
 
   ldr r0, =0x04000000
@@ -46,10 +48,9 @@ demo_boot:
   strb r1, [r0, #-6]           /* SoftReset target: EWRAM. */
   swi 0x000000
 
+.pool
 .balign 32
 demo_payload:
   .incbin "firmware.demo.ewram.gba"
 .balign 32
 demo_payload_end:
-
-.pool
