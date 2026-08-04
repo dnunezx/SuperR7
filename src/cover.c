@@ -281,14 +281,17 @@ void cover_cache_request(t_cover_cache *cache, const char *rom_path, uint32_t no
   }
 #if defined(__GBA__) && !defined(COVER_ART_DEMO)
   /*
-   * Real SuperCard SD hardware can fail before a long nested path reaches the
-   * fallback logic. Use the deterministic 8.3 alias as the canonical hardware
-   * lookup, while retaining long paths for host and visual-demo coverage.
+   * Real SuperCard SD hardware can fail to traverse the cover directory. Keep
+   * the descriptive filename but place it at the card root, matching the same
+   * long-name behavior already proven by root-level ROM loading. The reader
+   * still derives the 8.3 alias as a fallback.
    */
-  if (!cover_build_short_fallback_path(path, sizeof(path), path)) {
+  char root_path[COVER_PATH_MAX];
+  if (!cover_build_fallback_path(root_path, sizeof(root_path), path)) {
     cover_cache_clear(cache);
     return;
   }
+  strcpy(path, root_path);
 #endif
   if (cache->state != CoverEmpty && !strcmp(cache->path, path))
     return;

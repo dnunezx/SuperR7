@@ -120,6 +120,11 @@ static void test_path_lookup(void) {
   assert(cover_build_fallback_path(fallback, sizeof(fallback),
                                    "C:\\covers\\Game.sfcov"));
   assert(!strcmp(fallback, "/Game.sfcov"));
+  assert(cover_build_fallback_path(
+      fallback, sizeof(fallback),
+      "/.superfw/covers/Legend of Zelda, The - The Minish Cap (USA).sfcov"));
+  assert(!strcmp(fallback,
+                 "/Legend of Zelda, The - The Minish Cap (USA).sfcov"));
   assert(!cover_build_fallback_path(fallback, sizeof(fallback),
                                     "/covers/Game.png"));
   assert(!cover_build_fallback_path(fallback, 11,
