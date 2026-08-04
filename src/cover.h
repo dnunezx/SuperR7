@@ -24,7 +24,7 @@
 #define COVER_PATH_MAX              256
 #define COVER_LOAD_DELAY_MS         180
 #define COVER_DIRECTORY             "/.superfw/covers/"
-#define COVER_FALLBACK_DIRECTORY    "/.superfw/"
+#define COVER_FALLBACK_DIRECTORY    "/"
 
 typedef enum {
   CoverEmpty = 0,

@@ -87,14 +87,14 @@ Game-code lookup may be added in a later format-independent phase.
 
 The firmware first checks the organized `/.superfw/covers/` directory. For
 compatibility with SD implementations that fail to traverse that new nested
-directory, it retries the same filename directly under `/.superfw/`.
+directory, it retries the same filename at the SD-card root.
 If long-name lookup also fails, the final retry uses an 8.3-safe filename made
 from the uppercase eight-digit CRC-32 of the UTF-8 ROM basename (without its
-extension), followed by `.cov`, directly under `/.superfw/`.
+extension), followed by `.cov`, at the SD-card root.
 
-On actual GBA hardware, the SD build uses that 8.3-safe alias as its canonical
-lookup path. This avoids relying on long nested path resolution before a retry
-can occur. Host tests and the standalone visual demo retain the descriptive
+On actual GBA hardware, the SD build uses that root-level 8.3-safe alias as its
+canonical lookup path. This avoids all directory traversal before the cover is
+read. Host tests and the standalone visual demo retain the descriptive
 long-name path so both path forms remain covered.
 
 ## Validation requirements
