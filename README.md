@@ -13,6 +13,20 @@ read-only source for selectively reviewed fixes.
 The original SuperFW website and documentation remain useful for inherited
 firmware behavior: https://superfw.davidgf.net/
 
+Building SuperR7
+----------------
+
+The official SuperCard SD fork target uses the native 76-by-76 cover format
+and the complete Phase 5 interface:
+
+```sh
+make BOARD=sd COMPRESSION_RATIO=10 superr7.gba
+```
+
+The output is `superr7.gba`. Chain-load every new build on hardware before
+considering an internal-flash update. The inherited `superfw.gba` target is
+retained for compatibility and legacy-guard verification.
+
 
 Installation
 ------------

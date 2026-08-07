@@ -30,6 +30,11 @@ Status as of **August 6, 2026: Phase 5 hardware accepted; SuperR7 fork started**
 - SuperR7 branding and recognition are applied after that frozen checkpoint.
   Branded builds are validated separately and never overwrite the exact
   hardware-passed binary.
+- First post-checkpoint SuperR7 build from source commit `3deb361`: 214,232-byte
+  main binary, 104,768-byte compressed main payload, 220,752 of 257,024 EWRAM
+  bytes, 11,176 of 32,768 IWRAM bytes, and a 518,144-byte final image with
+  6,144 bytes free. Its SHA-256 is
+  `72FCA4B89E329B9D2A4E21D5E4BB6C083E997A214C2BB0AE8373FCC0367AF61B`.
 
 - Phase 0 baseline protection, Phase 1 native specification, the Phase 2
   emulator renderer, and Phase 3 Browse integration are complete. The user
@@ -452,6 +457,11 @@ Phase 5 implementation result:
 - Hardware result: the user chain-loaded this exact candidate and accepted the
   complete cleaned Phase 5 experience. It is preserved byte-for-byte in
   `releases/phase5-hardware-baseline/`.
+- The first branded SuperR7 successor carries the `SUPERR7` GBA title and
+  `3deb361a` Build ID. All Phase 4/5 native visual suites, all 23 Python checks,
+  and the host theme test pass. Its separate release note is under
+  `releases/superr7-start/`; physical validation of the branded successor is
+  recommended before it replaces the frozen baseline.
 
 ## Phase 6: Firmware-size and performance gate
 
