@@ -540,6 +540,41 @@ Hardware acceptance criteria:
 - Returning to the game restores its display and input state without a new
   regression.
 
+## Phase 9: SuperR7 Gothic boot splash
+
+Status: **Complete locally; exact physical hardware candidate ready**
+
+- Replaced the inherited 31-by-7 SuperFW mark with the approved monochrome
+  `SuperR7` Gothic wordmark, ornamental swashes, pure-black background, and a
+  four-stage grayscale progress bar.
+- Preserved the approved source artwork in `res/superr7-boot-logo-source.png`
+  and credited Danny Nunez directly beside the compact boot-logo data.
+- Stored the wordmark as a 72-by-22 1bpp mask and rendered it at 2x scale so
+  the extra detail does not consume the bootloader safety margin.
+- Shared one renderer between the GBA and NDS paths. The first stage remains
+  428 of 1,024 bytes; the complete bootloader is 2,968 of 3,072 bytes, leaving
+  104 bytes free.
+- Rebuilt the complete ratio-10 SuperR7 payload from checkpoint `1eec14f`
+  (embedded build ID `1eec14fd`): 214,236-byte main binary, 104,786-byte
+  compressed main payload, 220,756 of 257,024 EWRAM bytes, 11,176 of 32,768
+  IWRAM bytes, and a 518,144-byte final image with 6,144 bytes free.
+- Hardware image:
+  `artifacts/phase9-boot-logo-hardware/superr7-phase9-gothic-boot-1eec14f.gba`
+  (`SHA-256 93F774D81C6DEF17125587A66B121A8CF126D87256F7F547389ACD482F49A1E5`).
+- The real candidate was captured in headless mGBA; its 240-by-160 framebuffer
+  contains the expected black background, white logo, four grayscale bar
+  stages, and no unexpected colors. All Phase 4/5 visual suites, the in-game
+  visual suite, all 23 Python checks, and the normal-firmware compatibility
+  link also pass.
+
+Hardware acceptance criteria:
+
+- The full wordmark and ornamental curls remain readable on the physical GBA
+  display during cold boot and chain-load boot.
+- The progress bar shows four distinct grayscale stages on the black field.
+- Booting continues normally on the SuperCard SD with no delay, corruption,
+  or regression before the main menu appears.
+
 ## Definition of done
 
 The redesign is complete when the approved original card interface is used by
