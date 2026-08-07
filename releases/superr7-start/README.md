@@ -1,8 +1,8 @@
 # SuperR7 fork-start build
 
 This is the first branded SuperR7 firmware built from source checkpoint
-`3deb361`. It is a successor to, not a replacement for, the exact Phase 5 ROM
-that already passed physical hardware validation.
+`3deb361`. It passed physical SuperCard SD validation on August 6, 2026 and is
+the accepted branded baseline after the exact pre-branding Phase 5 ROM.
 
 - File: `SuperR7-phase5-branded.gba`
 - GBA title: `SUPERR7`
@@ -22,10 +22,10 @@ Verification completed:
 - All 23 cover-converter and UI Python checks.
 - Host theme test.
 - Normal-firmware compatibility build and legacy-guard symbol check.
+- Physical SuperCard SD chain-load validation.
 
 The exact pre-branding hardware-passed image remains under
-`../phase5-hardware-baseline/`. Chain-load this branded image on hardware before
-using it as an internal-flash replacement.
+`../phase5-hardware-baseline/` as a rollback artifact.
 
 SuperR7 development and maintenance: Danny Nunez.
 Upstream foundation: SuperFW by David Guillen Fandos (`davidgf`).

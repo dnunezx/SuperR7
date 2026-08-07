@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2024 David Guillen Fandos <david@davidgf.net>
+ * Copyright (C) 2026 Danny Nunez
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -25,11 +26,11 @@
 #include "nanoprintf.h"
 #include "fonts/font_render.h"
 #include "menu_messages.h"
-#include "res/logo.h"
 #include "fatfs/ff.h"
 #include "supercard_driver.h"
 #include "res/icons-menu.h"
 #include "ingame.h"
+#include "ui_theme.h"
 
 #include "directsave.h"
 
@@ -43,7 +44,8 @@ extern unsigned has_rtc_support;
 extern unsigned ingame_menu_lang;
 extern uint32_t cheat_base_addr;
 extern uint32_t menu_anim_speed;
-extern uint16_t ingame_menu_palette[8];
+extern uint16_t ingame_menu_palette[IGM_THEME_COLOR_COUNT];
+extern uint32_t ingame_menu_wallpaper;
 extern uint32_t savefile_backups;                // Num of save backups to create
 extern uint32_t scratch_base, scratch_size;      // Space to write snapshots (in memory)
 extern uint32_t spill_addr;                      // Spill buffer that gets reloaded on IGM exit
@@ -65,11 +67,23 @@ uint32_t *get_cheat_table();
 #define MAX_DISK_SLOTS      5
 #define MAX_MEM_SLOTS      32
 
-#define FG_COLOR    16
-#define BG_COLOR    17
-#define HI_COLOR    18
-#define SH_COLOR    19
-#define BL_COLOR    20
+#define UI_COLOR(role) (16 + (role))
+#define TEXT_COLOR     UI_COLOR(UiV2Text)
+#define DEEP_COLOR     UI_COLOR(UiV2BackgroundDeep)
+#define BG_COLOR       UI_COLOR(UiV2Background)
+#define STRIPE_COLOR   UI_COLOR(UiV2Stripe)
+#define STRIPE2_COLOR  UI_COLOR(UiV2StripeLight)
+#define CARD_COLOR     UI_COLOR(UiV2Card)
+#define SELECT_COLOR   UI_COLOR(UiV2SelectedCard)
+#define SHADOW_COLOR   UI_COLOR(UiV2CardShadow)
+#define EDGE_COLOR     UI_COLOR(UiV2CardEdge)
+#define GLOW_COLOR     UI_COLOR(UiV2GlowEdge)
+#define ACCENT_COLOR   UI_COLOR(UiV2Accent)
+#define ACCENT2_COLOR  UI_COLOR(UiV2AccentDark)
+#define WHITE_COLOR    UI_COLOR(UiV2White)
+#define MUTED_COLOR    UI_COLOR(UiV2Muted)
+#define DANGER_COLOR   UI_COLOR(UiV2Danger)
+#define DISABLED_COLOR UI_COLOR(UiV2Disabled)
 #define ICON_PAL   128
 
 #define THREEDOTS_WIDTH      9
@@ -80,8 +94,6 @@ uint32_t *get_cheat_table();
 #define DISK_ICON_DISABLED   2
 #define MEM_ICON             3
 #define MEM_ICON_DISABLED    4
-
-#define NOSELBAR           240
 
 #define MEM_VRAM_U8            (((volatile  uint8_t *) 0x06000000))
 #define MEM_ROM_U8             (((volatile  uint8_t *) 0x08000000))
@@ -97,7 +109,6 @@ static struct {
   unsigned opt;
 } popup;
 static unsigned franim = 0;
-static unsigned selbarpos;
 
 const uint8_t animspd_lut[] = {
   2,    //  8 pix/second
@@ -523,13 +534,76 @@ bool readfd_mem_snapshot(FIL *fd) {
   return true;
 }
 
-static void draw_hline(uint8_t *fb, unsigned x, unsigned y, unsigned w, uint16_t col) {
-  memory_set16((uint16_t*)&fb[x + y * SCREEN_WIDTH], dup8(col), w / 2);
-  memory_set16((uint16_t*)&fb[x + (y+1) * SCREEN_WIDTH], dup8(col), w / 2);
+static void set_pixel(uint8_t *fb, unsigned x, unsigned y, uint8_t color) {
+  uint16_t *pixel = (uint16_t*)&fb[y * SCREEN_WIDTH + (x & ~1u)];
+  uint16_t old = *pixel;
+  *pixel = x & 1 ? (old & 0x00FF) | ((uint16_t)color << 8) :
+                   (old & 0xFF00) | color;
 }
-static void draw_vline(uint8_t *fb, unsigned x, unsigned y, unsigned h, uint16_t col) {
-  for (unsigned i = 0; i < h; i++)
-    *(uint16_t*)&fb[x + (y + i) * SCREEN_WIDTH] = dup8(col);
+
+static void fill_rect(uint8_t *fb, unsigned left, unsigned top,
+                      unsigned width, unsigned height, uint8_t color) {
+  for (unsigned y = top; y < top + height; y++) {
+    unsigned x = left;
+    unsigned count = width;
+    if (x & 1) {
+      set_pixel(fb, x++, y, color);
+      count--;
+    }
+    if (count >= 2)
+      memory_set16((uint16_t*)&fb[y * SCREEN_WIDTH + x], dup8(color), count / 2);
+    if (count & 1)
+      set_pixel(fb, x + count - 1, y, color);
+  }
+}
+
+static void draw_outline(uint8_t *fb, unsigned left, unsigned top,
+                         unsigned width, unsigned height, uint8_t color) {
+  fill_rect(fb, left, top, width, 1, color);
+  fill_rect(fb, left, top + height - 1, width, 1, color);
+  fill_rect(fb, left, top + 1, 1, height - 2, color);
+  fill_rect(fb, left + width - 1, top + 1, 1, height - 2, color);
+}
+
+static void draw_card(uint8_t *fb, unsigned left, unsigned top,
+                      unsigned width, unsigned height, bool selected) {
+  fill_rect(fb, left + 2, top + 2, width, height, SHADOW_COLOR);
+  fill_rect(fb, left, top, width, height,
+            selected ? GLOW_COLOR : EDGE_COLOR);
+  fill_rect(fb, left + 1, top + 1, width - 2, height - 2,
+            selected ? SELECT_COLOR : CARD_COLOR);
+  if (selected)
+    fill_rect(fb, left + 1, top + 1, 3, height - 2, ACCENT_COLOR);
+}
+
+static void draw_background(uint8_t *fb) {
+  fill_rect(fb, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BG_COLOR);
+  switch (ingame_menu_wallpaper % UiWallpaperCount) {
+  case UiWallpaperWeave:
+    for (unsigned y = 1; y < SCREEN_HEIGHT; y += 4)
+      fill_rect(fb, 0, y, SCREEN_WIDTH, 1, STRIPE_COLOR);
+    for (unsigned x = 2; x < SCREEN_WIDTH; x += 8)
+      for (unsigned y = 3; y < SCREEN_HEIGHT; y += 8)
+        set_pixel(fb, x, y, STRIPE2_COLOR);
+    break;
+  case UiWallpaperGrid:
+    for (unsigned y = 0; y < SCREEN_HEIGHT; y += 8)
+      fill_rect(fb, 0, y, SCREEN_WIDTH, 1, STRIPE_COLOR);
+    for (unsigned x = 0; x < SCREEN_WIDTH; x += 8)
+      fill_rect(fb, x, 0, 1, SCREEN_HEIGHT, STRIPE_COLOR);
+    break;
+  case UiWallpaperCircuit:
+    for (unsigned y = 6; y < SCREEN_HEIGHT; y += 16) {
+      unsigned bend = (y * 5) % 37 + 12;
+      fill_rect(fb, 0, y, bend, 1, STRIPE_COLOR);
+      fill_rect(fb, bend, y, 1, 7, STRIPE_COLOR);
+      fill_rect(fb, bend, y + 6, 30, 1, STRIPE2_COLOR);
+      set_pixel(fb, bend + 30, y + 6, ACCENT2_COLOR);
+    }
+    break;
+  default:
+    break;
+  }
 }
 
 void draw_text(const char *t, uint8_t *fb, unsigned x, unsigned y, unsigned color) {
@@ -579,50 +653,64 @@ void draw_text_center(const char *t, uint8_t *fb, unsigned x, unsigned y, unsign
   draw_text_idx8_bus16(t, basept, SCREEN_WIDTH, color);
 }
 
+static void draw_screen_shell(uint8_t *fb) {
+  draw_background(fb);
+  draw_card(fb, 3, 3, 234, 18, false);
+  fill_rect(fb, 4, 4, 4, 16, ACCENT_COLOR);
+  draw_text_center("SuperR7", fb, SCREEN_WIDTH / 2, 7, TEXT_COLOR);
+  fill_rect(fb, 3, 145, 234, 12, DEEP_COLOR);
+  fill_rect(fb, 3, 145, 234, 1, ACCENT2_COLOR);
+  draw_text_center("A  SELECT     B  BACK", fb, SCREEN_WIDTH / 2, 147,
+                   UI_COLOR(UiV2DockText));
+}
+
+static void draw_menu_row(uint8_t *fb, unsigned row, unsigned top,
+                          const char *label, bool enabled) {
+  bool selected = row == copt;
+  draw_card(fb, 8, top, 224, 16, selected);
+  draw_text_ovf(label, fb, 16, top + 4, 208,
+                enabled ? (selected ? WHITE_COLOR : TEXT_COLOR) :
+                          DISABLED_COLOR);
+}
+
 void draw_popup(uint8_t *fb) {
-  unsigned topy = popup.callback ? SCREEN_HEIGHT / 2 - 24 : SCREEN_HEIGHT / 2 - 16;
-  unsigned boty = popup.callback ? SCREEN_HEIGHT / 2 + 24 : SCREEN_HEIGHT / 2 + 16;
-
-  memory_set16((uint16_t*)&fb[SCREEN_WIDTH * topy], dup8(FG_COLOR), SCREEN_WIDTH * (boty - topy) / 2);
-  draw_hline(fb, 0, topy, SCREEN_WIDTH, HI_COLOR);
-  draw_hline(fb, 0, boty - 2, SCREEN_WIDTH, HI_COLOR);
-
-  draw_text_center(popup.msg, fb, SCREEN_WIDTH/2, topy + 8, HI_COLOR);
+  unsigned topy = popup.callback ? 48 : 56;
+  unsigned height = popup.callback ? 66 : 48;
+  fill_rect(fb, 10, topy + 3, 220, height, SHADOW_COLOR);
+  fill_rect(fb, 10, topy, 220, height, GLOW_COLOR);
+  fill_rect(fb, 12, topy + 2, 216, height - 4, CARD_COLOR);
+  fill_rect(fb, 12, topy + 2, 4, height - 4, ACCENT_COLOR);
+  draw_text_center(popup.msg, fb, SCREEN_WIDTH/2, topy + 12, TEXT_COLOR);
   if (popup.callback) {
-    draw_text_center(msgs[ingame_menu_lang][IMENU_QC1_YES], fb, SCREEN_WIDTH/3,   topy + 24, HI_COLOR);
-    draw_text_center(msgs[ingame_menu_lang][IMENU_QC0_NO],  fb, SCREEN_WIDTH*2/3, topy + 24, HI_COLOR);
-    unsigned cx = SCREEN_WIDTH / 3 * (2 - popup.opt) - font_width(msgs[ingame_menu_lang][IMENU_QC0_NO + popup.opt]) / 2;
-    draw_text("⯈", fb, cx - 10, topy + 24, HI_COLOR);
+    draw_card(fb, 28, topy + 36, 82, 18, popup.opt == 1);
+    draw_card(fb, 130, topy + 36, 82, 18, popup.opt == 0);
+    draw_text_center(msgs[ingame_menu_lang][IMENU_QC1_YES], fb, 69,
+                     topy + 41, popup.opt == 1 ? WHITE_COLOR : TEXT_COLOR);
+    draw_text_center(msgs[ingame_menu_lang][IMENU_QC0_NO], fb, 171,
+                     topy + 41, popup.opt == 0 ? WHITE_COLOR : TEXT_COLOR);
   }
-  selbarpos = NOSELBAR;   // Disable bar to ensure we do not overdraw
 }
 
 void draw_main_menu(uint8_t *fb, unsigned framen) {
   bool havess = num_mem_savestates || num_dsk_savestates;
-  draw_text(msgs[ingame_menu_lang][IMENU_MAIN0_BACK_GAME],  fb, 24, 36 + 19*0, HI_COLOR);
-  draw_text(msgs[ingame_menu_lang][IMENU_MAIN1_RESET],      fb, 24, 36 + 19*1, HI_COLOR);
-  draw_text(msgs[ingame_menu_lang][IMENU_MAIN2_FLUSH_SAVE], fb, 24, 36 + 19*2, !savefile_pattern[0] ? SH_COLOR : HI_COLOR);
-  draw_text(msgs[ingame_menu_lang][IMENU_MAIN3_SSTATE],     fb, 24, 36 + 19*3, !havess ? SH_COLOR : HI_COLOR);
-  draw_text(msgs[ingame_menu_lang][IMENU_MAIN4_RTC],        fb, 24, 36 + 19*4, !has_rtc_support ? SH_COLOR : HI_COLOR);
-  draw_text(msgs[ingame_menu_lang][IMENU_MAIN5_CHEATS],     fb, 24, 36 + 19*5, !cheat_base_addr ? SH_COLOR : HI_COLOR);
-
-  selbarpos = 36 + 19*copt;
+  draw_menu_row(fb, 0, 26 + 19*0, msgs[ingame_menu_lang][IMENU_MAIN0_BACK_GAME], true);
+  draw_menu_row(fb, 1, 26 + 19*1, msgs[ingame_menu_lang][IMENU_MAIN1_RESET], true);
+  draw_menu_row(fb, 2, 26 + 19*2, msgs[ingame_menu_lang][IMENU_MAIN2_FLUSH_SAVE], savefile_pattern[0]);
+  draw_menu_row(fb, 3, 26 + 19*3, msgs[ingame_menu_lang][IMENU_MAIN3_SSTATE], havess);
+  draw_menu_row(fb, 4, 26 + 19*4, msgs[ingame_menu_lang][IMENU_MAIN4_RTC], has_rtc_support);
+  draw_menu_row(fb, 5, 26 + 19*5, msgs[ingame_menu_lang][IMENU_MAIN5_CHEATS], cheat_base_addr);
 }
 
 void draw_reset_menu(uint8_t *fb, unsigned framen) {
   for (unsigned i = 0; i <= IMENU_RST2_DEVSKIP - IMENU_RST0_GAME; i++)
-    draw_text(msgs[ingame_menu_lang][IMENU_RST0_GAME + i],  fb, 24, 36 + 19*i, HI_COLOR);
-  draw_text(msgs[ingame_menu_lang][IMENU_GOBACK], fb, 24, 93, HI_COLOR);
-
-  selbarpos = 36 + 19*copt;
+    draw_menu_row(fb, i, 36 + 22*i, msgs[ingame_menu_lang][IMENU_RST0_GAME + i], true);
+  draw_menu_row(fb, 3, 36 + 22*3, msgs[ingame_menu_lang][IMENU_GOBACK], true);
 }
 
 void draw_save_menu(uint8_t *fb, unsigned framen) {
   for (unsigned i = 0; i <= IMENU_SAVE2_RST - IMENU_SAVE0_OW; i++)
-    draw_text(msgs[ingame_menu_lang][i + IMENU_SAVE0_OW],  fb, 24, 36 + 19*i, HI_COLOR);
-  draw_text(msgs[ingame_menu_lang][IMENU_GOBACK], fb, 24, 93, HI_COLOR);
-
-  selbarpos = 36 + 19*copt;
+    draw_menu_row(fb, i, 36 + 22*i, msgs[ingame_menu_lang][i + IMENU_SAVE0_OW], true);
+  draw_menu_row(fb, 3, 36 + 22*3, msgs[ingame_menu_lang][IMENU_GOBACK], true);
 }
 
 void draw_rtc_menu(uint8_t *fb, unsigned framen) {
@@ -632,34 +720,37 @@ void draw_rtc_menu(uint8_t *fb, unsigned framen) {
   char tmont[3] = {'0' + rtc_date.month/10, '0' + rtc_date.month%10, 0};
   char tyear[5] = {'2', '0', '0' + rtc_date.year/10, '0' + rtc_date.year%10, 0};
 
-  draw_text(tyear, fb,  54, 56, HI_COLOR);
-  draw_text("-",   fb,  86, 56, HI_COLOR);
-  draw_text(tmont, fb,  95, 56, HI_COLOR);
-  draw_text("-",   fb, 111, 56, HI_COLOR);
-  draw_text(tdays, fb, 120, 56, HI_COLOR);
-  draw_text(thour, fb, 148, 56, HI_COLOR);
-  draw_text(":",   fb, 165, 56, HI_COLOR);
-  draw_text(tmins, fb, 170, 56, HI_COLOR);
+  draw_card(fb, 8, 30, 224, 44, copt < 5);
+  draw_text(tyear, fb,  54, 48, copt == 0 ? WHITE_COLOR : TEXT_COLOR);
+  draw_text("-",   fb,  86, 48, TEXT_COLOR);
+  draw_text(tmont, fb,  95, 48, copt == 1 ? WHITE_COLOR : TEXT_COLOR);
+  draw_text("-",   fb, 111, 48, TEXT_COLOR);
+  draw_text(tdays, fb, 120, 48, copt == 2 ? WHITE_COLOR : TEXT_COLOR);
+  draw_text(thour, fb, 148, 48, copt == 3 ? WHITE_COLOR : TEXT_COLOR);
+  draw_text(":",   fb, 165, 48, TEXT_COLOR);
+  draw_text(tmins, fb, 170, 48, copt == 4 ? WHITE_COLOR : TEXT_COLOR);
 
   if (copt < 5) {
     const uint8_t cox[] = {
       68, 103, 127, 156, 178
     };
-    draw_text_center("⯅", fb, cox[copt], 40, HI_COLOR);
-    draw_text_center("⯆", fb, cox[copt], 70, HI_COLOR);
-  } else if (copt == 5) {
-    draw_text_center("⯅", fb, SCREEN_WIDTH/2, 77, HI_COLOR);
-    draw_text_center("⯆", fb, SCREEN_WIDTH/2, 107, HI_COLOR);
-  } else
-    selbarpos = 130;
+    const uint8_t widths[] = {36, 20, 20, 20, 20};
+    draw_outline(fb, cox[copt] - widths[copt] / 2 - 2, 44,
+                 widths[copt] + 4, 16, ACCENT_COLOR);
+  }
 
   char tmp[64];
   npf_snprintf(tmp, sizeof(tmp), "%s: %s",
     msgs[ingame_menu_lang][IMENU_RTCSPD],
     msgs[ingame_menu_lang][rtc_speed ? (IMENU_SPD0 + rtc_speed - 1) : IMENU_FRZRTC]);
-  draw_text_center(tmp, fb, SCREEN_WIDTH/2, 92, HI_COLOR);
+  draw_card(fb, 8, 82, 224, 20, copt == 5);
+  draw_text_center(tmp, fb, SCREEN_WIDTH/2, 88,
+                   copt == 5 ? WHITE_COLOR : TEXT_COLOR);
 
-  draw_text_center(msgs[ingame_menu_lang][IMENU_UPDAT_RTC], fb, SCREEN_WIDTH/2, 130, HI_COLOR);
+  draw_card(fb, 8, 112, 224, 22, copt == 6);
+  draw_text_center(msgs[ingame_menu_lang][IMENU_UPDAT_RTC], fb,
+                   SCREEN_WIDTH/2, 119,
+                   copt == 6 ? WHITE_COLOR : TEXT_COLOR);
 }
 
 void draw_cheats_menu(uint8_t *fb, unsigned framen) {
@@ -674,16 +765,20 @@ void draw_cheats_menu(uint8_t *fb, unsigned framen) {
     off += sizeof(t_cheathdr) + e->slen + e->codelen;
 
     if (i >= soff) {
-      draw_text(e->enabled ? "☑" : "☐", fb, 9, 40 + 20 * numdisp, HI_COLOR);
+      bool selected = copt == i;
+      unsigned top = 31 + 21 * numdisp;
+      draw_card(fb, 8, top, 224, 17, selected);
+      draw_text(e->enabled ? "☑" : "☐", fb, 14, top + 4,
+                selected ? WHITE_COLOR : ACCENT_COLOR);
       if (copt == i)
-        draw_text_ovf_rotate((char*)e->data, fb, 24, 40 + 20 *numdisp, 210, HI_COLOR);
+        draw_text_ovf_rotate((char*)e->data, fb, 30, top + 4, 194,
+                             WHITE_COLOR);
       else
-        draw_text_ovf((char*)e->data, fb, 24, 40 + 20 *numdisp, 210, HI_COLOR);
+        draw_text_ovf((char*)e->data, fb, 30, top + 4, 194,
+                      TEXT_COLOR);
       numdisp++;
     }
   }
-
-  selbarpos = 40 + 20 * (copt - soff);
 }
 
 // Walks over the active cheats, produces a cheat table and updates
@@ -715,53 +810,50 @@ void draw_states_menu(uint8_t *fb, unsigned framen) {
   char tmp[32];
   int max_state = makepers >= 0 ? 0 : num_mem_savestates;
 
+  draw_card(fb, 8, 27, 224, 60, true);
+
   for (int o = -2; o <= 2; o++) {
     int sln = state_slot + o;
     if (sln >= max_state || sln < -num_dsk_savestates)
       continue;
 
     unsigned xpoint = SCREEN_WIDTH / 2 + (o * 40) - 8;
-    draw_hline(fb, xpoint - 6, 58, 28, o ? FG_COLOR : HI_COLOR);
-    draw_hline(fb, xpoint - 6, 84, 28, o ? FG_COLOR : HI_COLOR);
-    draw_vline(fb, xpoint - 7, 58, 28, o ? FG_COLOR : HI_COLOR);
-    draw_vline(fb, xpoint +22, 58, 28, o ? FG_COLOR : HI_COLOR);
+    draw_card(fb, xpoint - 7, 54, 30, 30, o == 0);
     unsigned iconn = sln >= 0 ? (memslot_valid[sln] ? MEM_ICON : MEM_ICON_DISABLED) :
                                 (diskslot_valid[-sln - 1] ? DISK_ICON : DISK_ICON_DISABLED);
 
-    draw_icon(fb, iconn, xpoint, 64);
+    draw_icon(fb, iconn, xpoint, 61);
   }
   if (state_slot < max_state - 3)
-    draw_text("⯈", fb, SCREEN_WIDTH - 20, 64, FG_COLOR);
+    draw_text("⯈", fb, SCREEN_WIDTH - 20, 61, ACCENT_COLOR);
   if (state_slot >= -num_dsk_savestates + 3)
-    draw_text("⯇", fb, 12, 64, FG_COLOR);
+    draw_text("⯇", fb, 12, 61, ACCENT_COLOR);
 
   if (state_slot < 0) {
     npf_snprintf(tmp, sizeof(tmp), msgs[ingame_menu_lang][IMENU_SSTATE_PN], -state_slot);
-    draw_text_center(tmp,  fb, SCREEN_WIDTH / 2, 34, HI_COLOR);
+    draw_text_center(tmp,  fb, SCREEN_WIDTH / 2, 33, WHITE_COLOR);
 
     if (makepers >= 0) {
       copt = copt & 1;
-      draw_text_center(msgs[ingame_menu_lang][IMENU_MAKEPER], fb, SCREEN_WIDTH / 2, 95 + 18*0, HI_COLOR);
-      draw_text_center(msgs[ingame_menu_lang][IMENU_CANCEL],  fb, SCREEN_WIDTH / 2, 95 + 18*1, HI_COLOR);
+      draw_menu_row(fb, 0, 94, msgs[ingame_menu_lang][IMENU_MAKEPER], true);
+      draw_menu_row(fb, 1, 113, msgs[ingame_menu_lang][IMENU_CANCEL], true);
     } else {
-      draw_text_center(msgs[ingame_menu_lang][IMENU_SSTATEP0_SAVE],  fb, SCREEN_WIDTH / 2, 95 + 18*0, HI_COLOR);
-      draw_text_center(msgs[ingame_menu_lang][IMENU_SSTATEP1_LOAD],  fb, SCREEN_WIDTH / 2, 95 + 18*1,
-                       (diskslot_valid[-state_slot - 1] ? HI_COLOR : SH_COLOR));
-      draw_text_center(msgs[ingame_menu_lang][IMENU_SSTATEP2_DEL],   fb, SCREEN_WIDTH / 2, 95 + 18*2,
-                       (diskslot_valid[-state_slot - 1] ? HI_COLOR : SH_COLOR));
+      draw_menu_row(fb, 0, 91, msgs[ingame_menu_lang][IMENU_SSTATEP0_SAVE], true);
+      draw_menu_row(fb, 1, 108, msgs[ingame_menu_lang][IMENU_SSTATEP1_LOAD],
+                    diskslot_valid[-state_slot - 1]);
+      draw_menu_row(fb, 2, 125, msgs[ingame_menu_lang][IMENU_SSTATEP2_DEL],
+                    diskslot_valid[-state_slot - 1]);
     }
   } else {
     npf_snprintf(tmp, sizeof(tmp), msgs[ingame_menu_lang][IMENU_SSTATE_QN], state_slot + 1);
-    draw_text_center(tmp,  fb, SCREEN_WIDTH / 2, 34, HI_COLOR);
+    draw_text_center(tmp,  fb, SCREEN_WIDTH / 2, 33, WHITE_COLOR);
 
-    draw_text_center(msgs[ingame_menu_lang][IMENU_SSTATEQ0_SAVE],  fb, SCREEN_WIDTH / 2, 95 + 18*0, HI_COLOR);
-    draw_text_center(msgs[ingame_menu_lang][IMENU_SSTATEQ1_LOAD],  fb, SCREEN_WIDTH / 2, 95 + 18*1,
-                     (memslot_valid[state_slot] ? HI_COLOR : SH_COLOR));
-    draw_text_center(msgs[ingame_menu_lang][IMENU_SSTATEQ2_WRITE], fb, SCREEN_WIDTH / 2, 95 + 18*2,
-                     (memslot_valid[state_slot] ? HI_COLOR : SH_COLOR));
+    draw_menu_row(fb, 0, 91, msgs[ingame_menu_lang][IMENU_SSTATEQ0_SAVE], true);
+    draw_menu_row(fb, 1, 108, msgs[ingame_menu_lang][IMENU_SSTATEQ1_LOAD],
+                  memslot_valid[state_slot]);
+    draw_menu_row(fb, 2, 125, msgs[ingame_menu_lang][IMENU_SSTATEQ2_WRITE],
+                  memslot_valid[state_slot]);
   }
-
-  selbarpos = 95 + 18*copt;
 }
 
 
@@ -1132,10 +1224,10 @@ const t_menu_def menudata [] = {
 
 void setup_video_frame() {
   // Setup video mode
-  REG_DISPCNT = 0x1444;   // Mode 4, BG2 + OBJs
+  REG_DISPCNT = 0x0404;   // Mode 4, BG2
   REG_BGxCNT(2) = 0x80;   // 256 color mode
-  REG_BLDCNT = 0x1F40;    // Blending enabled (2nd target = all)
-  REG_BLDALPHA = 0x0808;  // 50% alpha
+  REG_BLDCNT = 0;
+  REG_BLDALPHA = 0;
   REG_BGxHOFS(2) = 0;
   REG_BGxVOFS(2) = 0;
 
@@ -1147,20 +1239,11 @@ void setup_video_frame() {
   REG_BG2Y = 0;
 
   // Setup palettes
-  memory_copy16((uint16_t*)&MEM_PALETTE[1], logo_pal, sizeof(logo_pal) >> 1);
-  MEM_PALETTE[FG_COLOR] = ingame_menu_palette[0];
-  MEM_PALETTE[BG_COLOR] = ingame_menu_palette[1];
-  MEM_PALETTE[HI_COLOR] = ingame_menu_palette[2];
-  MEM_PALETTE[SH_COLOR] = ingame_menu_palette[3];
-  MEM_PALETTE[256 + BL_COLOR] = ingame_menu_palette[4];
+  memory_copy16((uint16_t*)&MEM_PALETTE[UI_COLOR(0)], ingame_menu_palette,
+                IGM_THEME_COLOR_COUNT);
 
   memory_copy16((uint16_t*)&MEM_PALETTE[ICON_PAL], menu_icons_pal, sizeof(menu_icons_pal) >> 1);
-  MEM_PALETTE[ICON_PAL] = MEM_PALETTE[BG_COLOR]; // Transparent color to BG color
-
-  // Initialize OAM (to display a selection bar)
-  fast_mem_clr_256((uint16_t*)MEM_OAM, 0, 1024);
-  // Fill selector object tile with some solid color.
-  fast_mem_clr_256((uint16_t*)&MEM_VRAM_OBJS[0], dup16(dup8(BL_COLOR)), 256);
+  MEM_PALETTE[ICON_PAL] = MEM_PALETTE[SELECT_COLOR];
 }
 
 void ingame_menu_blocked(uint32_t *use_cheats_hook) {
@@ -1170,8 +1253,7 @@ void ingame_menu_blocked(uint32_t *use_cheats_hook) {
   REG_DISPCNT = (REG_DISPCNT & ~0x10);
 
   uint8_t *fb = (uint8_t*)&MEM_VRAM_U8[0xA000];
-  fast_mem_clr_256((uint16_t*)fb, dup16(dup8(BG_COLOR)), SCREEN_WIDTH * SCREEN_HEIGHT);
-  render_logo((uint16_t*)fb, SCREEN_WIDTH / 2, 20, 2);
+  draw_screen_shell(fb);
 
   // Render the "no-save" icon in the corner, if the menu is rendered during a save operation.
   const unsigned SAVE_ICON_X = (SCREEN_WIDTH - 64) / 2;
@@ -1187,7 +1269,9 @@ void ingame_menu_blocked(uint32_t *use_cheats_hook) {
   }
 
   // Show an user message
-  draw_text_center(msgs[ingame_menu_lang][IMENU_SAVING_BLOCKED], fb, SCREEN_WIDTH / 2, SCREEN_HEIGHT - 32, HI_COLOR);
+  draw_card(fb, 8, 119, 224, 22, true);
+  draw_text_center(msgs[ingame_menu_lang][IMENU_SAVING_BLOCKED], fb,
+                   SCREEN_WIDTH / 2, 126, WHITE_COLOR);
 
   // Wait for VBlank (with some leeway)
   while ((REG_VCOUNT & ~7) != 160);
@@ -1235,11 +1319,9 @@ void ingame_menu_loop(uint32_t *use_cheats_hook) {
   while (1) {
     // Render a new frame into the back-buffer
     framen ^= 1;
-    // Clear the screen & draw logo at the top
+    // Draw the complete SuperR7 card shell into the back buffer.
     uint8_t *fb = (uint8_t*)&MEM_VRAM_U8[0xA000 * framen];
-    fast_mem_clr_256((uint16_t*)fb, dup16(dup8(BG_COLOR)), SCREEN_WIDTH * SCREEN_HEIGHT);
-    render_logo((uint16_t*)fb, SCREEN_WIDTH / 2, 20, 2);
-    selbarpos = NOSELBAR;
+    draw_screen_shell(fb);
 
     // Render the current menu
     menudata[submenu].draw_fn(fb, framen);
@@ -1303,13 +1385,6 @@ void ingame_menu_loop(uint32_t *use_cheats_hook) {
 
     // Wait for VBlank (with some leeway)
     while ((REG_VCOUNT & ~7) != 160);
-    // Update OAM
-    for (unsigned i = 0; i < 16; i++) {
-      MEM_OAM[i*4+0] = selbarpos | 0x2000 | 0x0400;   // Use 256 entries palette + transparency
-      MEM_OAM[i*4+1] = (i*16) | 0x4000;  // Size 16x16
-      MEM_OAM[i*4+2] = 512;    // OBJ numbers start at 512 for Mode 4
-    }
-
     // Flip frame
     REG_DISPCNT = (REG_DISPCNT & ~0x10) | (framen << 4);
   }

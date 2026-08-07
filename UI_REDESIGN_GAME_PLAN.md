@@ -19,7 +19,8 @@ Reference concept:
 
 ## Current checkpoint
 
-Status as of **August 6, 2026: Phase 5 hardware accepted; SuperR7 fork started**.
+Status as of **August 6, 2026: branded SuperR7 baseline hardware accepted;
+in-game card redesign ready for hardware testing**.
 
 - The exact cleaned Phase 5 candidate passed physical SuperCard SD validation
   and is now frozen as the functional baseline for the independent **SuperR7**
@@ -35,6 +36,8 @@ Status as of **August 6, 2026: Phase 5 hardware accepted; SuperR7 fork started**
   bytes, 11,176 of 32,768 IWRAM bytes, and a 518,144-byte final image with
   6,144 bytes free. Its SHA-256 is
   `72FCA4B89E329B9D2A4E21D5E4BB6C083E997A214C2BB0AE8373FCC0367AF61B`.
+- The user chain-loaded that exact branded build and confirmed it passed the
+  physical hardware test. It is now the accepted branded rollback baseline.
 
 - Phase 0 baseline protection, Phase 1 native specification, the Phase 2
   emulator renderer, and Phase 3 Browse integration are complete. The user
@@ -498,10 +501,45 @@ Acceptance criteria:
   observed.
 - A verified rollback image remains available before flashing.
 
+## Phase 8: In-game menu card integration and legacy-theme cleanup
+
+Status: **Complete locally; physical chain-load verification pending**
+
+- Replaced the inherited logo, flat text rows, popup bands, and OBJ selection
+  bar with full-width SuperR7 cards, selected-card glow, accent rails, a compact
+  header/footer, card dialogs, and dedicated RTC and savestate layouts.
+- Passed all 20 Appearance palette roles and the selected wallpaper into the
+  in-game payload when a game is launched. Electric Blue, Mutant Green,
+  Stealth Black, Chrome Silver, custom colors, and contrast overrides therefore
+  use the same derived colors as the main interface.
+- Added an emulator-only in-game menu ROM and scripted native captures for the
+  main, reset, save, RTC, selected update, and confirmation-dialog states.
+- Removed the obsolete `menu_theme` variable, `theme=` settings-file output,
+  hidden Interface row, five unused alternative legacy palettes, English
+  message key, and all fourteen localized `Theme color` entries only after the
+  replacement renderer passed its dedicated visual suite.
+- Post-cleanup candidate measurements before the final source checkpoint:
+  49,512-byte in-game payload, 214,236-byte main binary, 104,836-byte ratio-10
+  compressed main payload, 220,756 of 257,024 EWRAM bytes, 11,176 of 32,768
+  IWRAM bytes, and a 518,144-byte final image with 6,144 bytes free.
+- All four Phase 4/5 native visual suites, the new in-game visual suite, all 23
+  Python checks, the host theme test, and the normal-firmware compatibility
+  build pass.
+
+Hardware acceptance criteria:
+
+- The in-game menu opens reliably with the configured hotkey.
+- Main, reset, save, savestate, RTC, cheat, and confirmation screens remain
+  readable and responsive with the active Appearance preset.
+- Resuming, saving, resetting, returning to firmware, RTC updates, savestates,
+  and cheats retain their existing behavior.
+- Returning to the game restores its display and input state without a new
+  regression.
+
 ## Definition of done
 
 The redesign is complete when the approved original card interface is used by
-Browse, Recent, Settings, Tools, and their normal secondary screens; at least
+Browse, Recent, Settings, Tools, the in-game menu, and their normal secondary screens; at least
 five game rows remain readable; the SD firmware stays within its size and memory
 limits; and emulator plus physical-hardware testing show no regression in cover
 art, navigation, launching, or saves.

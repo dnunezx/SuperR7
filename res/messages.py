@@ -76,7 +76,6 @@ en_strings = [
   "MSG_DEFS_PATCH":  "Patching",
   "MSG_BROW_EMPTY":  "Empty directory",
 
-  "MSG_UIS_THEME": "Theme color",
   "MSG_UIS_LANG":  "Language",
   "MSG_UIS_RECNT": "Recent ROMs",
   "MSG_UIS_ANSPD": "Text speed",

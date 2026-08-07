@@ -68,7 +68,6 @@ const uint8_t animspd_lut[] = {
 };
 
 // Menu settings
-uint32_t menu_theme = 0;
 uint32_t lang_id = 0;
 uint32_t recent_menu = 1;
 uint32_t hide_hidden = 0;
@@ -113,7 +112,6 @@ bool save_ui_settings() {
   uint16_t lc = lang_getcode();
   char buf[512];
   npf_snprintf(buf, sizeof(buf),
-    "theme=%lu\n"
     "langcode=%c%c\n"
     "recent_menu=%lu\n"
     "anim_speed=%lu\n"
@@ -126,7 +124,7 @@ bool save_ui_settings() {
     "ui_selection=%lu\n"
     "ui_contrast=%lu\n"
 #endif
-    , menu_theme, (lc & 0xFF), (lc >> 8), recent_menu, anim_speed, hide_hidden
+    , (lc & 0xFF), (lc >> 8), recent_menu, anim_speed, hide_hidden
 #ifdef UI_BROWSER_V2
     , ui_theme_preset, ui_wallpaper, ui_background_color, ui_accent_color,
       ui_selection_color, ui_contrast
@@ -224,9 +222,7 @@ static void parse_settings(void *usr, const char *var, const char *value) {
 
 static void parse_ui_settings(void *usr, const char *var, const char *value) {
   unsigned valu = parseuint(value);
-  if (!strcmp(var, "theme"))
-    menu_theme = valu;
-  else if (!strcmp(var, "recent_menu"))
+  if (!strcmp(var, "recent_menu"))
     recent_menu = valu;
   else if (!strcmp(var, "hide_hidden"))
     hide_hidden = valu;

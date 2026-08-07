@@ -29,6 +29,8 @@
 #define FLASH_IGM_TRAMP_NOCHEATS_OFF    ( 8*4)    // Offsets in ingame_trampoline.S
 #define FLASH_IGM_TRAMP_CHEATS_OFF      (32*4)
 
+#define IGM_THEME_COLOR_COUNT          20
+
 #ifndef __ASSEMBLER__
 
 // In-game menu patching structure
@@ -54,7 +56,8 @@ typedef struct {
   uint32_t scratch_space_size;
   uint32_t menu_has_rtc_support;       // Whether the game is running with RTC patches
   uint32_t menu_anim_speed;            // Menu animation speed
-  uint16_t menu_palette[8];            // Palette colors for the menu
+  uint16_t menu_palette[IGM_THEME_COLOR_COUNT]; // SuperR7 Appearance palette
+  uint32_t menu_wallpaper;             // SuperR7 Appearance wallpaper
   uint32_t savefile_backups;           // Backup count
   char savefile_pattern[256];          // File name (without the .sav) pattern
   char statefile_pattern[256];         // File name (without the .X.state) pattern

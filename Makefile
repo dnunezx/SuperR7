@@ -118,6 +118,11 @@ MENUFILES=src/ingame.S \
           src/supercard_driver.c \
           ${FATFSFILES}
 
+INGAME_DEMO_INFILES=tests/ingame_menu_demo.c \
+                    $(filter-out src/ingame.S,$(MENUFILES)) \
+                    src/patches.S \
+                    src/ui_theme.c
+
 INFILES=src/gba_ewram_crt0.S \
         src/main.c \
         src/cimpl.c \
@@ -194,6 +199,22 @@ cover-demo-v3.gba: firmware.demo.v3.ewram.gba src/cover_demo_boot.S ldscripts/gb
 		-T ldscripts/gba_cover_demo.ld -nostartfiles -nostdlib
 	$(OBJCOPY) --output-target=binary cover-demo-v3.elf cover-demo-v3.gba
 	./tools/fw-fixer.py --header-only cover-demo-v3.gba
+
+ingame-menu-demo.gba: firmware.ingame.demo.ewram.gba src/cover_demo_boot.S ldscripts/gba_cover_demo.ld
+	$(CC) $(CFLAGS) -DCOVER_ART_DEMO \
+		-DCOVER_DEMO_PAYLOAD='"firmware.ingame.demo.ewram.gba"' \
+		-o ingame-menu-demo.elf src/cover_demo_boot.S \
+		-T ldscripts/gba_cover_demo.ld -nostartfiles -nostdlib
+	$(OBJCOPY) --output-target=binary ingame-menu-demo.elf ingame-menu-demo.gba
+	./tools/fw-fixer.py --header-only ingame-menu-demo.gba
+
+firmware.ingame.demo.ewram.gba: $(INGAME_DEMO_INFILES) src/gba_ewram_crt0.S src/menu_messages.h ldscripts/gba_ewram.ld.i
+	$(CC) $(CFLAGS) -DUI_BROWSER_V2 -DINGAME_MENU_DEMO \
+		-o firmware.ingame.demo.ewram.elf src/gba_ewram_crt0.S $(INGAME_DEMO_INFILES) \
+		-T ldscripts/gba_ewram.ld.i -nostartfiles \
+		-Wl,-Map=firmware.ingame.demo.ewram.map \
+		-Wl,--print-memory-usage -fno-builtin
+	$(OBJCOPY) --output-target=binary firmware.ingame.demo.ewram.elf firmware.ingame.demo.ewram.gba
 
 firmware.demo.ewram.gba: $(DEMO_INFILES) ingamemenu.payload superfw.dldi.payload directsave.payload ingame_trampoline.payload src/messages_data.h ldscripts/gba_ewram.ld.i
 	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -DUI_BROWSER_V2 -o firmware.demo.ewram.elf $(DEMO_INFILES) \

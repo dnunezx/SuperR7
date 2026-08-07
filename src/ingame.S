@@ -67,6 +67,7 @@
 .globl menu_anim_speed
 .globl has_rtc_support
 .globl ingame_menu_palette
+.globl ingame_menu_wallpaper
 .globl font_base_addr
 .globl savefile_backups
 .globl cheat_base_addr
@@ -122,7 +123,8 @@ scratch_base:          .word 0x0    // Buffer reserved for scratch space.
 scratch_size:          .word 0x0
 has_rtc_support:       .word 0x0    // Filled with a boolean to allow tweaking RTC values
 menu_anim_speed:       .word 0x0    // Menu animation speed
-ingame_menu_palette:   .fill 8,2,0  // Filled with background, foreground and select colors
+ingame_menu_palette:   .fill IGM_THEME_COLOR_COUNT,2,0 // SuperR7 Appearance palette
+ingame_menu_wallpaper: .word 0x0    // SuperR7 Appearance wallpaper
 savefile_backups:      .word 0x0    // Fill the number of backups to preserve.
 
 savefile_pattern:      .fill 256, 1, 0          // File name pattern (NULL terminated)

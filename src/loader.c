@@ -25,6 +25,7 @@
 #include "patchengine.h"
 #include "settings.h"
 #include "ingame.h"
+#include "ui_theme.h"
 #include "fonts/font_render.h"
 #include "supercard_driver.h"
 #include "fatfs/ff.h"
@@ -150,8 +151,34 @@ void load_ingame_menu(
   igm->scratch_space_size = total_size - (menu_size + fontsz + cheats);
   igm->menu_has_rtc_support = rtc_patches;    // Using RTC patches
   igm->savefile_backups = backup_sram_default;// Backup count
-  for (unsigned i = 0; i < sizeof(igm->menu_palette) / sizeof(igm->menu_palette[0]); i++)
-    igm->menu_palette[i] = MEM_PALETTE[ING_PALETTE_BASE + i];
+#ifdef UI_BROWSER_V2
+  ui_theme_apply_palette(igm->menu_palette);
+  igm->menu_wallpaper = ui_wallpaper;
+#else
+  for (unsigned i = 0; i < IGM_THEME_COLOR_COUNT; i++)
+    igm->menu_palette[i] = MEM_PALETTE[ING_PALETTE_BASE + 1];
+  igm->menu_palette[UiV2Text] = MEM_PALETTE[ING_PALETTE_BASE + 2];
+  igm->menu_palette[UiV2BackgroundDeep] = MEM_PALETTE[ING_PALETTE_BASE + 0];
+  igm->menu_palette[UiV2Background] = MEM_PALETTE[ING_PALETTE_BASE + 1];
+  igm->menu_palette[UiV2Stripe] = MEM_PALETTE[ING_PALETTE_BASE + 0];
+  igm->menu_palette[UiV2StripeLight] = MEM_PALETTE[ING_PALETTE_BASE + 3];
+  igm->menu_palette[UiV2Card] = MEM_PALETTE[ING_PALETTE_BASE + 0];
+  igm->menu_palette[UiV2SelectedCard] = MEM_PALETTE[ING_PALETTE_BASE + 4];
+  igm->menu_palette[UiV2CardShadow] = MEM_PALETTE[ING_PALETTE_BASE + 3];
+  igm->menu_palette[UiV2CardEdge] = MEM_PALETTE[ING_PALETTE_BASE + 2];
+  igm->menu_palette[UiV2GlowEdge] = MEM_PALETTE[ING_PALETTE_BASE + 4];
+  igm->menu_palette[UiV2GlowShadow] = MEM_PALETTE[ING_PALETTE_BASE + 3];
+  igm->menu_palette[UiV2Accent] = MEM_PALETTE[ING_PALETTE_BASE + 0];
+  igm->menu_palette[UiV2AccentDark] = MEM_PALETTE[ING_PALETTE_BASE + 3];
+  igm->menu_palette[UiV2DockText] = MEM_PALETTE[ING_PALETTE_BASE + 2];
+  igm->menu_palette[UiV2White] = MEM_PALETTE[ING_PALETTE_BASE + 2];
+  igm->menu_palette[UiV2Muted] = MEM_PALETTE[ING_PALETTE_BASE + 3];
+  igm->menu_palette[UiV2Folder] = MEM_PALETTE[ING_PALETTE_BASE + 2];
+  igm->menu_palette[UiV2Danger] = MEM_PALETTE[ING_PALETTE_BASE + 2];
+  igm->menu_palette[UiV2Disabled] = MEM_PALETTE[ING_PALETTE_BASE + 3];
+  igm->menu_palette[UiV2FolderInset] = MEM_PALETTE[ING_PALETTE_BASE + 3];
+  igm->menu_wallpaper = UiWallpaperNone;
+#endif
 
   if (savefn)
     memcpy32(igm->savefile_pattern, savefn, sizeof(igm->savefile_pattern));

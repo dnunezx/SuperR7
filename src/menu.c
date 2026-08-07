@@ -134,13 +134,13 @@ _Static_assert (COVER_IMAGE_TOP + COVER_HEIGHT <= SCREEN_HEIGHT, "cover exceeds 
 #define FLASH_GO_KEYS          (KEY_BUTTUP|KEY_BUTTL|KEY_BUTTR)
 
 enum {
-  UiSetTheme = 0,
-  UiSetLang  = 1,
-  UiSetRect  = 2,
-  UiSetASpd  = 3,
-  UiSetHid   = 4,
-  UiSetSave  = 5,
-  UiSetMAX   = 5,
+  UiSetLang  = 0,
+  UiSetRect  = 1,
+  UiSetASpd  = 2,
+  UiSetHid   = 3,
+  UiSetSave  = 4,
+  UiSetMAX   = 4,
+  UiSetCNT   = 5,
 };
 
 enum {
@@ -281,13 +281,7 @@ const struct {
   uint16_t sh_color;     // Menu shadow/disabled color
 } themes[] = {
   { RGB2GBA(0xaaaaaa), RGB2GBA(0xffffff), RGB2GBA(0x000000), RGB2GBA(0xcccccc), RGB2GBA(0x9999bb), RGB2GBA(0xc08888) }, // White
-  { RGB2GBA(0xeca551), RGB2GBA(0xe7c092), RGB2GBA(0x000000), RGB2GBA(0xbda27b), RGB2GBA(0x90816e), RGB2GBA(0x615d58) }, // Orange
-  { RGB2GBA(0x26879c), RGB2GBA(0x8fb1b8), RGB2GBA(0x000000), RGB2GBA(0x5296a5), RGB2GBA(0x1d7f95), RGB2GBA(0x6f8185) }, // Blue
-  { RGB2GBA(0x308855), RGB2GBA(0x88aa99), RGB2GBA(0x000000), RGB2GBA(0x778888), RGB2GBA(0x777777), RGB2GBA(0x606060) }, // Green
-  { RGB2GBA(0xad11c8), RGB2GBA(0xe47af6), RGB2GBA(0x000000), RGB2GBA(0xad5dc6), RGB2GBA(0x724095), RGB2GBA(0x72667a) }, // Purple
-  { RGB2GBA(0x222222), RGB2GBA(0x444444), RGB2GBA(0xeeeeee), RGB2GBA(0x737573), RGB2GBA(0xaaaaaa), RGB2GBA(0x606060) }, // Dark
 };
-#define THEME_COUNT (sizeof(themes) / sizeof(themes[0]))
 
 typedef struct {
   // ROM information
@@ -2114,23 +2108,19 @@ void render_settings(volatile uint8_t *frame) {
 void render_ui_settings(volatile uint8_t *frame) {
   const unsigned colx = 170;
   char tmpbuf[64];
-  npf_snprintf(tmpbuf, sizeof(tmpbuf), "< %lu >", menu_theme + 1U);
-  draw_text_ovf(msgs[lang_id][MSG_UIS_THEME], frame, 8, 22, 224);
+  npf_snprintf(tmpbuf, sizeof(tmpbuf), "< %s >", msgs[lang_id][MSG_LANG_NAME]);
+  draw_text_ovf(msgs[lang_id][MSG_UIS_LANG], frame, 8, 22, 224);
   draw_central_text(tmpbuf, frame, colx, 22 );
 
-  npf_snprintf(tmpbuf, sizeof(tmpbuf), "< %s >", msgs[lang_id][MSG_LANG_NAME]);
-  draw_text_ovf(msgs[lang_id][MSG_UIS_LANG], frame, 8, 22 + 20, 224);
-  draw_central_text(tmpbuf, frame, colx, 22 + 20 );
-
-  draw_text_ovf(msgs[lang_id][MSG_UIS_RECNT], frame, 8, 22 + 40, 224);
-  draw_central_text(msgs[lang_id][recent_menu ? MSG_KNOB_ENABLED : MSG_KNOB_DISABLED], frame, colx, 22 + 40 );
+  draw_text_ovf(msgs[lang_id][MSG_UIS_RECNT], frame, 8, 22 + 20, 224);
+  draw_central_text(msgs[lang_id][recent_menu ? MSG_KNOB_ENABLED : MSG_KNOB_DISABLED], frame, colx, 22 + 20 );
 
   npf_snprintf(tmpbuf, sizeof(tmpbuf), "< %s >", msgs[lang_id][MSG_UIS_SPD0 + anim_speed]);
-  draw_text_ovf(msgs[lang_id][MSG_UIS_ANSPD], frame, 8, 22 + 60, 224);
-  draw_central_text(tmpbuf, frame, colx, 22 + 60 );
+  draw_text_ovf(msgs[lang_id][MSG_UIS_ANSPD], frame, 8, 22 + 40, 224);
+  draw_central_text(tmpbuf, frame, colx, 22 + 40 );
 
-  draw_text_ovf(msgs[lang_id][MSG_UIS_BHID], frame, 8, 22 + 80, 224);
-  draw_central_text(msgs[lang_id][hide_hidden ? MSG_KNOB_DISABLED : MSG_KNOB_ENABLED], frame, colx, 22 + 80 );
+  draw_text_ovf(msgs[lang_id][MSG_UIS_BHID], frame, 8, 22 + 60, 224);
+  draw_central_text(msgs[lang_id][hide_hidden ? MSG_KNOB_DISABLED : MSG_KNOB_ENABLED], frame, colx, 22 + 60 );
 
   if (smenu.uiset.selector != UiSetSave)
     for (unsigned i = 0; i < 240; i += 16)
@@ -2211,21 +2201,21 @@ void render_tools(volatile uint8_t *frame) {
 }
 #endif
 
-void reload_theme(unsigned thnum) {
+void reload_theme(void) {
   // Palette 0..15 contains the main menu template colors
-  MEM_PALETTE[FG_COLOR] = themes[thnum].fg_color;
-  MEM_PALETTE[BG_COLOR] = themes[thnum].bg_color;
-  MEM_PALETTE[FT_COLOR] = themes[thnum].ft_color;
-  MEM_PALETTE[HI_COLOR] = themes[thnum].hi_color;
+  MEM_PALETTE[FG_COLOR] = themes[0].fg_color;
+  MEM_PALETTE[BG_COLOR] = themes[0].bg_color;
+  MEM_PALETTE[FT_COLOR] = themes[0].ft_color;
+  MEM_PALETTE[HI_COLOR] = themes[0].hi_color;
   // In-game menu palette
-  MEM_PALETTE[IGM_PAL_FG] = themes[thnum].fg_color;
-  MEM_PALETTE[IGM_PAL_BG] = themes[thnum].bg_color;
-  MEM_PALETTE[IGM_PAL_HI] = themes[thnum].ft_color;
-  MEM_PALETTE[IGM_PAL_SH] = themes[thnum].sh_color;
-  MEM_PALETTE[IGM_PAL_BL] = themes[thnum].hi_blend;
+  MEM_PALETTE[IGM_PAL_FG] = themes[0].fg_color;
+  MEM_PALETTE[IGM_PAL_BG] = themes[0].bg_color;
+  MEM_PALETTE[IGM_PAL_HI] = themes[0].ft_color;
+  MEM_PALETTE[IGM_PAL_SH] = themes[0].sh_color;
+  MEM_PALETTE[IGM_PAL_BL] = themes[0].hi_blend;
 
   // Palette entries for icons and other objects
-  MEM_PALETTE[256 + SEL_COLOR] = themes[thnum].hi_blend;
+  MEM_PALETTE[256 + SEL_COLOR] = themes[0].hi_blend;
 }
 
 #if !defined(UI_BROWSER_V2) || defined(SUPPORT_NORGAMES)
@@ -2600,10 +2590,10 @@ static void render_ui_browser_phase4(volatile uint8_t *frame) {
       model.entries[i].kind = UiBrowserV2Other;
     }
   } else if (smenu.menu_tab == MENUTAB_UILANG) {
-    static const unsigned labels[UiSetMAX] = {
+    static const unsigned labels[UiSetCNT] = {
       MSG_UIS_LANG, MSG_UIS_RECNT, MSG_UIS_ANSPD, MSG_UIS_BHID, MSG_UIS_SAVE,
     };
-    const char *values[UiSetMAX] = {
+    const char *values[UiSetCNT] = {
       msgs[lang_id][MSG_LANG_NAME],
       msgs[lang_id][recent_menu ? MSG_KNOB_ENABLED : MSG_KNOB_DISABLED],
       msgs[lang_id][MSG_UIS_SPD0 + anim_speed],
@@ -2611,8 +2601,8 @@ static void render_ui_browser_phase4(volatile uint8_t *frame) {
       "A: SAVE",
     };
     model.wide = true;
-    model.entry_count = UiSetMAX;
-    model.selected_row = smenu.uiset.selector - UiSetLang;
+    model.entry_count = UiSetCNT;
+    model.selected_row = smenu.uiset.selector;
     for (unsigned i = 0; i < model.entry_count; i++) {
       model.entries[i].name = msgs[lang_id][labels[i]];
       model.entries[i].value = values[i];
@@ -2735,7 +2725,7 @@ void menu_render(unsigned fcnt) {
       render_ui_browser_phase4(frame);
     smenu.anim_state += fcnt * animspd_lut[anim_speed];
   } else {
-    reload_theme(menu_theme);
+    reload_theme();
 #endif
 
   // Render the tab menu on top (rows 0..15), highlighting the selected option
@@ -2940,7 +2930,7 @@ void menu_demo_init() {
   smenu.recent.maxentries = ARRAY_SIZE(recent_paths);
 
   cover_cache_init(&menu_cover_cache);
-  reload_theme(2);  // High-contrast blue theme for reference screenshots.
+  reload_theme();
 #ifdef UI_BROWSER_V2
   ui_theme_reset(UiThemeElectricBlue);
   ui_browser_v2_load_palette(MEM_PALETTE);
@@ -2965,7 +2955,7 @@ void menu_init(int sram_testres) {
   // Load recent ROMs (we could disable this for speed)
   recent_reload();
 
-  reload_theme(menu_theme);
+  reload_theme();
 
 #ifdef UI_BROWSER_V2
   smenu.menu_tab = MENUTAB_ROMBROWSE;
@@ -4013,21 +4003,12 @@ static void keypress_menu_settings(unsigned newkeys) {
 }
 
 static void keypress_menu_uisettings(unsigned newkeys) {
-#ifdef UI_BROWSER_V2
-  if (smenu.uiset.selector < UiSetLang)
-    smenu.uiset.selector = UiSetLang;
-  if (newkeys & KEY_BUTTUP)
-    smenu.uiset.selector = MAX(UiSetLang, smenu.uiset.selector - 1);
-#else
   if (newkeys & KEY_BUTTUP)
     smenu.uiset.selector = MAX(0, smenu.uiset.selector - 1);
-#endif
   if (newkeys & KEY_BUTTDOWN)
     smenu.uiset.selector = MIN(UiSetMAX, smenu.uiset.selector + 1);
   if (newkeys & KEY_BUTTLEFT) {
-    if (smenu.uiset.selector == UiSetTheme)
-      menu_theme = menu_theme ? menu_theme - 1 : 0;
-    else if (smenu.uiset.selector == UiSetASpd)
+    if (smenu.uiset.selector == UiSetASpd)
       anim_speed = anim_speed ? anim_speed - 1 : 0;
     else if (smenu.uiset.selector == UiSetHid)
       hide_hidden ^= 1;
@@ -4037,9 +4018,7 @@ static void keypress_menu_uisettings(unsigned newkeys) {
       lang_id = (lang_id + LANG_COUNT - 1) % LANG_COUNT;
   }
   if (newkeys & KEY_BUTTRIGHT) {
-    if (smenu.uiset.selector == UiSetTheme)
-      menu_theme = MIN(THEME_COUNT - 1, menu_theme + 1);
-    else if (smenu.uiset.selector == UiSetASpd)
+    if (smenu.uiset.selector == UiSetASpd)
       anim_speed = MIN(animspd_cnt - 1, anim_speed + 1);
     else if (smenu.uiset.selector == UiSetHid)
       hide_hidden ^= 1;
@@ -4050,18 +4029,14 @@ static void keypress_menu_uisettings(unsigned newkeys) {
   }
 
   if (newkeys & KEY_BUTTA && smenu.uiset.selector == UiSetSave) {
-#ifdef UI_BROWSER_V2
     smenu.uiset.selector = UiSetLang;
-#else
-    smenu.uiset.selector = 0;
-#endif
     if (save_ui_settings())
       spop.alert_msg = msgs[lang_id][MSG_OK_SETSAVE];
     else
       spop.alert_msg = msgs[lang_id][MSG_ERR_SETSAVE];
   }
 
-  reload_theme(menu_theme);
+  reload_theme();
 }
 
 static void keypress_menu_tools(unsigned newkeys) {

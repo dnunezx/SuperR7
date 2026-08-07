@@ -417,14 +417,17 @@ Completed portions:
 - Built the separate portable SuperCover application for artwork discovery,
   filename matching, conversion, and export.
 - Confirmed the final firmware works when permanently flashed.
+- Replaced the inherited interface, including the in-game menu, with the
+  coherent SuperR7 card identity and shared Appearance palette.
+- Finalized the SuperR7 project name, local branch, branding, recognition,
+  hardware baseline, and fork-start release artifact.
 
 Deferred portions:
 
 - Add a user setting to enable or disable cover art.
 - Consider GBA game-code matching as a fallback or replacement for basename
   matching.
-- Replace the basic interface with a coherent independent visual identity.
-- Finalize the standalone project name, branding, repository, and releases.
+- Publish the standalone hosted repository and its first public release.
 - Revisit non-SD board support only after the SD-focused roadmap is stable.
 
 The upstream pull-request goal is closed because the maintainer declined the

@@ -22,7 +22,9 @@ jobs:
           submodules: true
 
       - name: Build standard-GBA cover demo
-        run: make BOARD=sd cover-demo.gba
+        run: |
+          make BOARD=sd cover-demo.gba
+          make BOARD=sd ingame-menu-demo.gba
 
       - name: Install official mGBA development headless build
         run: |
@@ -43,6 +45,13 @@ jobs:
       - name: Verify framebuffer output
         run: python3 tests/cover_demo_visual.py
 
+      - name: Capture and verify the SuperR7 in-game menu
+        run: |
+          mkdir -p artifacts/ingame-menu
+          timeout 85s mgba-headless --script tools/mgba-ingame-menu.lua ingame-menu-demo.gba || test -f artifacts/ingame-menu/complete.txt
+          test -f artifacts/ingame-menu/complete.txt
+          PYTHONPATH=. python3 tests/ingame_menu_visual.py
+
       - name: Upload demo ROM and reference screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -53,3 +62,7 @@ jobs:
             firmware.demo.ewram.elf
             firmware.demo.ewram.map
             artifacts/cover-demo/*
+            ingame-menu-demo.gba
+            firmware.ingame.demo.ewram.elf
+            firmware.ingame.demo.ewram.map
+            artifacts/ingame-menu/*

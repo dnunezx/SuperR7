@@ -90,8 +90,9 @@ https://patchtool.superfw.davidgf.net/
 In-game menu
 ------------
 
-SuperR7 inherits SuperFW's in-game menu, which allows users to pause the current game
-and perform certain actions such as:
+SuperR7's in-game menu uses the same card interface, Appearance colors,
+contrast handling, and procedural wallpaper selected in the main firmware. It
+allows users to pause the current game and perform actions such as:
 
   - Resuming and resetting the game
   - Going back to the SuperR7 menu (without having to reboot your GBA)

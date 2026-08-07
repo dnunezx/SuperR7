@@ -56,7 +56,6 @@ typedef struct {
 } t_rom_launch_settings;
 
 // Menu settings
-extern uint32_t menu_theme;
 extern uint32_t lang_id;
 extern uint32_t recent_menu;
 extern uint32_t hide_hidden;
