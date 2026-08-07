@@ -503,7 +503,7 @@ Acceptance criteria:
 
 ## Phase 8: In-game menu card integration and legacy-theme cleanup
 
-Status: **Complete locally; physical chain-load verification pending**
+Status: **Complete locally; exact physical hardware candidate ready**
 
 - Replaced the inherited logo, flat text rows, popup bands, and OBJ selection
   bar with full-width SuperR7 cards, selected-card glow, accent rails, a compact
@@ -518,10 +518,14 @@ Status: **Complete locally; physical chain-load verification pending**
   hidden Interface row, five unused alternative legacy palettes, English
   message key, and all fourteen localized `Theme color` entries only after the
   replacement renderer passed its dedicated visual suite.
-- Post-cleanup candidate measurements before the final source checkpoint:
-  49,512-byte in-game payload, 214,236-byte main binary, 104,836-byte ratio-10
+- The exact hardware candidate was built from source checkpoint `e696196`
+  (embedded build ID `e6961964`): 49,512-byte in-game payload, 214,236-byte
+  main binary, 104,835-byte ratio-10
   compressed main payload, 220,756 of 257,024 EWRAM bytes, 11,176 of 32,768
   IWRAM bytes, and a 518,144-byte final image with 6,144 bytes free.
+- Hardware image:
+  `artifacts/phase8-ingame-cards-hardware/superr7-phase8-ingame-cards-e696196.gba`
+  (`SHA-256 DA86376417C34FC002970A4B55406C4EEC736173DC5A1EC4D2C4DBF50CF1E8F8`).
 - All four Phase 4/5 native visual suites, the new in-game visual suite, all 23
   Python checks, the host theme test, and the normal-firmware compatibility
   build pass.
