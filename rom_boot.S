@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2024 David Guillen Fandos <david@davidgf.net>
+ * Copyright (C) 2026 Danny Nunez
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -121,8 +122,8 @@ _start:
   .byte 0x78,0x00,0x90,0xCB,0x88,0x11,0x3A,0x94,0x65,0xC0,0x7C,0x63,0x87,0xF0,0x3C,0xAF
   .byte 0xD6,0x25,0xE4,0x8B,0x38,0x0A,0xAC,0x72,0x21,0xD4,0xF8,0x07
 
-  @ Game Title (80000A0h): SUPERFW
-  .byte   0x53,0x55,0x50,0x45,0x52,0x46,0x57,0x00,0x00,0x00,0x00,0x00
+  @ Game Title (80000A0h): SUPERR7
+  .byte   0x53,0x55,0x50,0x45,0x52,0x52,0x37,0x00,0x00,0x00,0x00,0x00
 
   @ Game Code (80000ACh)
   .byte   0x50,0x41,0x53,0x53
@@ -161,7 +162,9 @@ entry_point:
   .word 0                      @ Unused
   .word 0                      @ Unused
   .fill 16, 1, 0               @ 16 byte hash (patched)
-  .asciz "SUPERFW~DAVIDGF"     @ Name/author
+  @ Retained as the inherited firmware-format signature so SuperR7 remains
+  @ compatible with the proven SuperFW update validator.
+  .asciz "SUPERFW~DAVIDGF"
 
 main:
   @ Basic GBA+NDS common HW initialization
@@ -687,7 +690,10 @@ _end_bootloader:
 @ apack compressed assets!
 payload_ewram:
   #if defined(COMPRESS_FIRMWARE)
-    .incbin "firmware.ewram.gba.comp"
+    #ifndef FW_EWRAM_PAYLOAD
+      #define FW_EWRAM_PAYLOAD "firmware.ewram.gba.comp"
+    #endif
+    .incbin FW_EWRAM_PAYLOAD
   #else
     .incbin "firmware.ewram.gba"
   #endif

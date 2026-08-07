@@ -1,7 +1,13 @@
-/* Standard-GBA boot wrapper for the emulator-only cover-art demo. */
+/*
+ * Copyright (C) 2026 Danny Nunez
+ * Standard-GBA boot wrapper for the emulator-only cover-art demo.
+ */
 
 #define REG_IME       0x04000208
 #define EWRAM_PAYLOAD 0x027C0000
+#ifndef COVER_DEMO_PAYLOAD
+#define COVER_DEMO_PAYLOAD "firmware.demo.ewram.gba"
+#endif
 
 .section .text, "ax"
 .global _start
@@ -51,6 +57,6 @@ demo_boot:
 .pool
 .balign 32
 demo_payload:
-  .incbin "firmware.demo.ewram.gba"
+  .incbin COVER_DEMO_PAYLOAD
 .balign 32
 demo_payload_end:

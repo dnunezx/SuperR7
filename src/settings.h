@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2024 David Guillen Fandos <david@davidgf.net>
+ * Copyright (C) 2026 Danny Nunez
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -60,6 +61,10 @@ extern uint32_t lang_id;
 extern uint32_t recent_menu;
 extern uint32_t hide_hidden;
 extern uint32_t anim_speed;
+
+#ifdef UI_BROWSER_V2
+#include "ui_theme.h"
+#endif
 
 // Defaults/Settings
 extern t_patch_policy patcher_default;

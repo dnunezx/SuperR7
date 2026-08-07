@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2024 David Guillen Fandos <david@davidgf.net>
+ * Copyright (C) 2026 Danny Nunez
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -24,6 +25,9 @@
 #include "common.h"
 #include "nanoprintf.h"
 #include "util.h"
+#ifdef UI_BROWSER_V2
+#include "ui_theme.h"
+#endif
 
 #pragma GCC optimize ("Os")
 
@@ -113,8 +117,21 @@ bool save_ui_settings() {
     "langcode=%c%c\n"
     "recent_menu=%lu\n"
     "anim_speed=%lu\n"
-    "hide_hidden=%lu\n",
-    menu_theme, (lc & 0xFF), (lc >> 8), recent_menu, anim_speed, hide_hidden);
+    "hide_hidden=%lu\n"
+#ifdef UI_BROWSER_V2
+    "ui_preset=%lu\n"
+    "ui_wallpaper=%lu\n"
+    "ui_background=%lu\n"
+    "ui_accent=%lu\n"
+    "ui_selection=%lu\n"
+    "ui_contrast=%lu\n"
+#endif
+    , menu_theme, (lc & 0xFF), (lc >> 8), recent_menu, anim_speed, hide_hidden
+#ifdef UI_BROWSER_V2
+    , ui_theme_preset, ui_wallpaper, ui_background_color, ui_accent_color,
+      ui_selection_color, ui_contrast
+#endif
+  );
 
   UINT wrbytes;
   FRESULT res = f_write(&fd, buf, strlen(buf), &wrbytes);
@@ -215,6 +232,20 @@ static void parse_ui_settings(void *usr, const char *var, const char *value) {
     hide_hidden = valu;
   else if (!strcmp(var, "anim_speed"))
     anim_speed = valu;
+#ifdef UI_BROWSER_V2
+  else if (!strcmp(var, "ui_preset"))
+    ui_theme_preset = valu % UiThemePresetCount;
+  else if (!strcmp(var, "ui_wallpaper"))
+    ui_wallpaper = valu % UiWallpaperCount;
+  else if (!strcmp(var, "ui_background"))
+    ui_background_color = valu % UiColorCount;
+  else if (!strcmp(var, "ui_accent"))
+    ui_accent_color = valu % UiColorCount;
+  else if (!strcmp(var, "ui_selection"))
+    ui_selection_color = valu % UiColorCount;
+  else if (!strcmp(var, "ui_contrast"))
+    ui_contrast = valu % UiContrastCount;
+#endif
   else if (!strcmp(var, "langcode")) {
     uint16_t code = ((uint8_t)value[0]) | (((uint8_t)value[1]) << 8);
     lang_id = lang_lookup(code);
@@ -259,6 +290,9 @@ void load_settings() {
     }
     f_close(&fd);
   }
+#ifdef UI_BROWSER_V2
+  ui_theme_sanitize();
+#endif
 }
 
 void sram_template_filename_calc(const char *rom, const char * extension, char *savefn) {

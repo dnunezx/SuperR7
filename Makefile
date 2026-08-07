@@ -152,6 +152,9 @@ INFILES=src/gba_ewram_crt0.S \
         src/fonts/font_render.c \
         ${FATFSFILES}
 
+DEMO_INFILES=$(INFILES) src/ui_browser_v2.c src/ui_theme.c
+UI_INFILES=$(INFILES) src/ui_browser_v2.c src/ui_theme.c
+
 all:	$(FWBINFILES) $(BIEMUFILES) directsave.payload ingame_trampoline.payload
 	# Wrap the firmware around a ROM->EWRAM loader
 	$(CC) $(CFLAGS) -o firmware.elf rom_boot.S -T ldscripts/gba_romboot.ld -nostartfiles -nostdlib -Wl,--defsym,MAX_FLASH_SIZE=$(MAXFSIZE)K
@@ -159,17 +162,62 @@ all:	$(FWBINFILES) $(BIEMUFILES) directsave.payload ingame_trampoline.payload
 	# Fix the header/checksum.
 	./tools/fw-fixer.py superfw.gba
 
+superfw-ui.gba: firmware.ui.ewram.gba.comp res/patches.db.comp res/fonts.pack.comp $(BIEMUFILES) directsave.payload ingame_trampoline.payload
+	$(CC) $(CFLAGS) -DFW_EWRAM_PAYLOAD='"firmware.ui.ewram.gba.comp"' \
+		-o firmware.ui.elf rom_boot.S -T ldscripts/gba_romboot.ld -nostartfiles -nostdlib \
+		-Wl,--defsym,MAX_FLASH_SIZE=$(MAXFSIZE)K
+	$(OBJCOPY) --output-target=binary firmware.ui.elf superfw-ui.gba
+	./tools/fw-fixer.py superfw-ui.gba
+
+superfw-ui-v3.gba: firmware.ui.v3.ewram.gba.comp res/patches.db.comp res/fonts.pack.comp $(BIEMUFILES) directsave.payload ingame_trampoline.payload
+	$(CC) $(CFLAGS) -DCOVER_ART_V3 -DFW_EWRAM_PAYLOAD='"firmware.ui.v3.ewram.gba.comp"' \
+		-o firmware.ui.v3.elf rom_boot.S -T ldscripts/gba_romboot.ld -nostartfiles -nostdlib \
+		-Wl,--defsym,MAX_FLASH_SIZE=$(MAXFSIZE)K
+	$(OBJCOPY) --output-target=binary firmware.ui.v3.elf superfw-ui-v3.gba
+	./tools/fw-fixer.py superfw-ui-v3.gba
+
+# Official SuperR7 SD build. Keep the legacy target available for comparison
+# while the standalone fork establishes its release workflow.
+superr7.gba: superfw-ui-v3.gba
+	cp superfw-ui-v3.gba superr7.gba
+
 cover-demo.gba: firmware.demo.ewram.gba src/cover_demo_boot.S ldscripts/gba_cover_demo.ld
 	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -o cover-demo.elf src/cover_demo_boot.S \
 		-T ldscripts/gba_cover_demo.ld -nostartfiles -nostdlib
 	$(OBJCOPY) --output-target=binary cover-demo.elf cover-demo.gba
 	./tools/fw-fixer.py --header-only cover-demo.gba
 
-firmware.demo.ewram.gba: $(INFILES) ingamemenu.payload superfw.dldi.payload directsave.payload ingame_trampoline.payload src/messages_data.h ldscripts/gba_ewram.ld.i
-	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -o firmware.demo.ewram.elf $(INFILES) \
+cover-demo-v3.gba: firmware.demo.v3.ewram.gba src/cover_demo_boot.S ldscripts/gba_cover_demo.ld
+	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -DCOVER_ART_V3 \
+		-DCOVER_DEMO_PAYLOAD='"firmware.demo.v3.ewram.gba"' \
+		-o cover-demo-v3.elf src/cover_demo_boot.S \
+		-T ldscripts/gba_cover_demo.ld -nostartfiles -nostdlib
+	$(OBJCOPY) --output-target=binary cover-demo-v3.elf cover-demo-v3.gba
+	./tools/fw-fixer.py --header-only cover-demo-v3.gba
+
+firmware.demo.ewram.gba: $(DEMO_INFILES) ingamemenu.payload superfw.dldi.payload directsave.payload ingame_trampoline.payload src/messages_data.h ldscripts/gba_ewram.ld.i
+	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -DUI_BROWSER_V2 -o firmware.demo.ewram.elf $(DEMO_INFILES) \
 		-T ldscripts/gba_ewram.ld.i -nostartfiles -Wl,-Map=firmware.demo.ewram.map \
 		-Wl,--print-memory-usage -fno-builtin
 	$(OBJCOPY) --output-target=binary firmware.demo.ewram.elf firmware.demo.ewram.gba
+
+firmware.demo.v3.ewram.gba: $(DEMO_INFILES) ingamemenu.payload superfw.dldi.payload directsave.payload ingame_trampoline.payload src/messages_data.h ldscripts/gba_ewram.ld.i
+	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -DCOVER_ART_V3 -DUI_BROWSER_V2 -o firmware.demo.v3.ewram.elf $(DEMO_INFILES) \
+		-T ldscripts/gba_ewram.ld.i -nostartfiles -Wl,-Map=firmware.demo.v3.ewram.map \
+		-Wl,--print-memory-usage -fno-builtin
+	$(OBJCOPY) --output-target=binary firmware.demo.v3.ewram.elf firmware.demo.v3.ewram.gba
+
+firmware.ui.ewram.gba: $(UI_INFILES) ingamemenu.payload superfw.dldi.payload directsave.payload ingame_trampoline.payload src/messages_data.h ldscripts/gba_ewram.ld.i
+	$(CC) $(CFLAGS) -DUI_BROWSER_V2 -o firmware.ui.ewram.elf $(UI_INFILES) \
+		-T ldscripts/gba_ewram.ld.i -nostartfiles -Wl,-Map=firmware.ui.ewram.map \
+		-Wl,--print-memory-usage -fno-builtin
+	$(OBJCOPY) --output-target=binary firmware.ui.ewram.elf firmware.ui.ewram.gba
+
+firmware.ui.v3.ewram.gba: $(UI_INFILES) ingamemenu.payload superfw.dldi.payload directsave.payload ingame_trampoline.payload src/messages_data.h ldscripts/gba_ewram.ld.i
+	$(CC) $(CFLAGS) -DCOVER_ART_V3 -DUI_BROWSER_V2 -o firmware.ui.v3.ewram.elf $(UI_INFILES) \
+		-T ldscripts/gba_ewram.ld.i -nostartfiles -Wl,-Map=firmware.ui.v3.ewram.map \
+		-Wl,--print-memory-usage -fno-builtin
+	$(OBJCOPY) --output-target=binary firmware.ui.v3.ewram.elf firmware.ui.v3.ewram.gba
 
 firmware.ewram.gba: $(INFILES) ingamemenu.payload superfw.dldi.payload directsave.payload ingame_trampoline.payload src/messages_data.h ldscripts/gba_ewram.ld.i
 	# Build the actual firmware image
@@ -204,6 +252,12 @@ src/menu_messages.h:	res/messages.py
 	./res/messages.py h menu > src/menu_messages.h
 
 firmware.ewram.gba.comp:	firmware.ewram.gba ./upkr.elf
+	./upkr.elf -l $(COMPRESSION_RATIO) $< $@
+
+firmware.ui.ewram.gba.comp:	firmware.ui.ewram.gba ./upkr.elf
+	./upkr.elf -l $(COMPRESSION_RATIO) $< $@
+
+firmware.ui.v3.ewram.gba.comp:	firmware.ui.v3.ewram.gba ./upkr.elf
 	./upkr.elf -l $(COMPRESSION_RATIO) $< $@
 
 %.gba.comp:	%.gba.bin ./upkr.elf

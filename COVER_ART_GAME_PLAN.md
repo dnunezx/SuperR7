@@ -1,17 +1,19 @@
-# SuperFW SD Cover Art Game Plan
+# SuperR7 SD Cover Art Game Plan
 
 ## Objective
 
-Add responsive cover-art previews to the SuperFW ROM browser for the SuperCard
+Add responsive cover-art previews to the inherited SuperFW ROM browser for the SuperCard
 SD model without compromising game launching, save handling, or menu stability.
 
-The first release will display artwork for the currently selected game. It will
-not attempt to show a grid of multiple covers.
+This objective is complete as of August 2026. The resulting hardware-tested
+build is now the stable baseline for an independent firmware project. The first
+implementation displays artwork for the currently selected game rather than a
+grid of multiple covers.
 
 ## MVP scope
 
 - Target the SuperCard SD build first (`BOARD=sd`).
-- Display one portrait cover beside the game list.
+- Display one 72-by-72 square cover beside the game list.
 - Support the regular ROM browser and Recent Games.
 - Store artwork on the SD card under `/.superfw/covers/`.
 - Match artwork by ROM basename for the MVP.
@@ -25,12 +27,76 @@ not attempt to show a grid of multiple covers.
 
 | Phase | Status | Result |
 | --- | --- | --- |
-| 1: Clean baseline | Complete | SD build and host tests pass; baseline sizes recorded. Physical smoke test remains pending. |
+| 1: Clean baseline | Complete | SD build and host tests pass; baseline sizes recorded. Later production builds were also verified on physical hardware. |
 | 2: Cover format and converter | Complete | Version 2 square format, converter, batch mode, previews, strict validation, documentation, and automated tests implemented. |
-| 3: Firmware loader and cache | Complete | Strict firmware parser, basename lookup, fixed SDRAM cache, deferred SD loading, Browse/Recent selection tracking, and host tests implemented. |
-| 4: Browser integration | Complete | Selected covers, theme-aware placeholders, clipped selectors, and narrower Browse/Recent lists are implemented. Emulator and hardware visual verification remain in Phases 5-6. |
+| 3: Firmware loader and cache | Complete | Strict parser, basename lookup, fixed EWRAM cache, deferred SD loading, Browse/Recent selection tracking, and host tests implemented. |
+| 4: Browser integration | Complete | Selected covers, theme-aware placeholders, clipped selectors, and narrower Browse/Recent lists are implemented and hardware verified. |
 | 5: PC and emulator verification | Complete | A standard-GBA demo ROM now exercises the real menu in mGBA; scripted visual checks cover navigation, valid/missing/corrupt art, Browse/Recent parity, panel bounds, and stable frame swaps. |
-| 6-7 | Not started | Phase 6 SuperCard SD hardware verification is next. |
+| 6: SuperCard SD hardware verification | Complete | Browse, Recent, rapid scrolling, booting, saving, cold boots, and permanently flashed operation passed on a physical SuperCard SD. |
+| 7: Polish and release | Split into follow-up work | Canonical cover-folder support and the portable SuperCover application are complete. The browser redesign now continues in [its own game plan](UI_REDESIGN_GAME_PLAN.md); release identity and optional conveniences remain separate. |
+
+## Current project position
+
+- Stable firmware checkpoint: commit `90de4fb` on `feature/cover-art`.
+- Target hardware remains the SuperCard SD model.
+- `/.superfw/covers/` is the canonical artwork directory. Root-level long-name
+  and 8.3 paths remain compatibility fallbacks, not the recommended layout.
+- Metal Slug Advance and The Legend of Zelda: The Minish Cap display their
+  square covers in Browse and Recent Games on real hardware.
+- Both games boot normally. Existing save data was updated, written to the SD
+  card, and reloaded successfully after a power cycle.
+- The firmware was permanently flashed and repeatedly booted successfully.
+- The portable SuperCover desktop application handles artwork discovery,
+  matching, conversion, and user-selected export locations in a separate
+  project.
+- The upstream maintainer declined the cover-art feature. The resulting Phase 5
+  source and hardware-passed image are now the baseline of the independent
+  **SuperR7** fork, maintained by Danny Nunez. Original GPL notices and
+  upstream attribution remain intact.
+- Browser UI redesign work completed on `feature/ui-browser` and is tracked in
+  [UI_REDESIGN_GAME_PLAN.md](UI_REDESIGN_GAME_PLAN.md).
+
+## Baseline exit checklist
+
+- [x] Square version 2 cover format and strict validation.
+- [x] Canonical organized cover directory on physical hardware.
+- [x] Browse and Recent Games show the same matching artwork.
+- [x] Missing and malformed covers fail safely.
+- [x] Rapid scrolling does not expose stale artwork or stall navigation.
+- [x] Selected games boot normally with covers installed.
+- [x] Save creation, SD persistence, and post-power-cycle loading verified.
+- [x] Emulator demo and automated visual regression coverage.
+- [x] Permanently flashed firmware boots and operates normally.
+
+## Loose ends before the next implementation phase
+
+The cover feature itself has no known hardware blocker. The remaining work is
+project housekeeping or deferred polish:
+
+1. Preserve commit `90de4fb` as the named cover-art baseline and preserve the
+   exact cleaned Phase 5 hardware image as the SuperR7 functional baseline.
+2. Use **SuperR7** as the standalone project and product name. Keep upstream as
+   a read-only remote for selectively adopting fixes when the standalone remote
+   is created.
+3. Keep the fresh Phase 5 size report and firmware-size gate on every future
+   change.
+4. Re-run the SD build, host tests, converter tests, and mGBA visual tests for
+   every branded or functional SuperR7 build.
+5. Keep the root-level cover lookup paths for compatibility until a later
+   release provides a deliberate migration policy.
+6. Keep the cover enable/disable setting, final branding, theme work, and broad
+   animation polish separate from the focused browser redesign plan.
+
+The local fork start and frozen baseline are complete. Creating or publishing a
+new hosted repository remains a separate external release-engineering action.
+
+### Parallel 76-by-76 experiment
+
+The UI redesign has a separate version 3 cover candidate for native 76-by-76
+artwork. It intentionally leaves this completed version 2 plan, converter,
+72-by-72 cover library, and normal firmware targets intact. The candidate is
+documented in [the version 3 format note](docs/cover-format-v3-76.md) and must
+be tested from a separate cover directory and chain-loaded firmware image.
 
 ## Proposed design
 
@@ -163,8 +229,10 @@ Phase 3 result:
   state, and render-ready palette/pixel access.
 - Cover paths are derived safely from supported ROM basenames and resolved under
   `/.superfw/covers/`.
-- One 5,928-byte fixed cache lives in SuperCard SDRAM; cover data does not use
-  the GBA heap or add artwork to the firmware image.
+- Phase 3 initially placed one 5,928-byte fixed cache in SuperCard SDRAM; cover
+  data did not use the GBA heap or add artwork to the firmware image. Physical
+  testing in Phase 6 revealed that cartridge SDRAM becomes inaccessible during
+  SD reads, so the final implementation moved this fixed cache to GBA EWRAM.
 - A changed selection immediately invalidates stale artwork, then waits 180 ms
   before performing one SD read outside the per-frame drawing path.
 - Ready, pending, missing, invalid, and SD I/O failure states are kept separate.
@@ -341,12 +409,53 @@ Phase 6 hardware result:
 
 ### Phase 7: Polish and release
 
+Completed portions:
+
+- Restored `/.superfw/covers/` as the canonical hardware location.
+- Retained root-level long-name and deterministic 8.3 aliases as compatibility
+  fallbacks.
+- Built the separate portable SuperCover application for artwork discovery,
+  filename matching, conversion, and export.
+- Confirmed the final firmware works when permanently flashed.
+
+Deferred portions:
+
 - Add a user setting to enable or disable cover art.
 - Consider GBA game-code matching as a fallback or replacement for basename
   matching.
-- Improve converter usability and documentation.
-- Ensure all board variants still compile.
-- Add build-size checks and prepare an upstream-friendly pull request.
+- Replace the basic interface with a coherent independent visual identity.
+- Finalize the standalone project name, branding, repository, and releases.
+- Revisit non-SD board support only after the SD-focused roadmap is stable.
+
+The upstream pull-request goal is closed because the maintainer declined the
+feature. Future work will be designed for the independent project instead.
+
+## Next-stage feature exploration
+
+The browser redesign is tracked separately. Other candidate feature work should
+still be evaluated in this order, without committing the roadmap to all of it
+at once:
+
+1. **Library navigation:** Favorites, alphabetical quick-jump, search, and
+   improved Recent Games controls.
+2. **ROM identification:** Game-code-based metadata and artwork matching that
+   survives ROM filename changes.
+3. **Per-game configuration:** A clearer place for launch, patch, save, cheat,
+   and artwork behavior.
+4. **Save reliability:** User-facing backup, restore, and diagnostic tools with
+   conservative write behavior.
+5. **System tools:** Better SD, firmware, memory, and patch-status information
+   for troubleshooting physical hardware.
+
+Every candidate must satisfy the following entry criteria before implementation:
+
+- It provides clear value on a physical SuperCard SD.
+- Its firmware and EWRAM cost can be bounded before the design is committed.
+- Its persistent data format is versioned or safely forward-compatible.
+- Its risky logic can be covered by host tests or the emulator demo.
+- Experimental hardware builds can be chain-loaded before permanent flashing.
+- Game launching, saves, and the completed cover-art baseline remain regression
+  gates.
 
 ## Risk controls
 
@@ -394,8 +503,8 @@ and a small custom-format loader remain practical.
 
 ## Definition of done for the first release
 
-The feature is ready when the SD firmware reliably displays a converted cover
-for the selected game, remains responsive with large directories, handles
-missing or malformed artwork safely, launches and saves games without
-regression, and has passed both emulator-assisted and physical SuperCard SD
-testing.
+Complete. The SD firmware reliably displays a converted cover for the selected
+game, remains responsive during rapid navigation, handles missing or malformed
+artwork safely, launches and saves games without regression, and has passed
+both emulator-assisted and physical SuperCard SD testing. No known cover-art
+defect remains open at the close of this plan.

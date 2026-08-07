@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright 2024 David Guillen Fandos <david@davidgf.net>
+# Copyright (C) 2026 Danny Nunez
 # Fixes GBA header and patches checksums and other relevant header fields
 
 import sys, hashlib, struct
@@ -29,4 +30,3 @@ if not header_only:
   fwimg = fwimg[:0xE0] + hashlib.sha256(fwimg).digest()[:16] + fwimg[0xF0:]
 
 open(image_path, "r+b").write(fwimg)
-

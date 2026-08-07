@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# Copyright (C) 2026 Danny Nunez
 
 import os, sys, json
 
@@ -218,7 +219,7 @@ en_strings = [
   "MSG_ERR_SAVERD":  "Error: can't read save file",        # alertmsg
   "MSG_ERR_SAVEWR":  "Error: can't write save file",       # alertmsg
   "MSG_ERR_SAVEPR":  "Error: can't prepare save file",     # alertmsg
-  "MSG_ERR_SAVEIT":  "Error: unknown internal error",      # alertmsg
+  "MSG_ERR_SAVEIT":  "Error: unknown intenal error",      # alertmsg
   "MSG_ERR_UNKTYP":  "Unknown file type!",                 # alertmsg
 
   "MSG_BAD_SDRAM": "SDRAM (ROM storage) error!",           # alertmsg
@@ -229,10 +230,23 @@ en_strings = [
   "MSG_CAPACITY":  "Capacity: %s",
   "MSG_DBPINFO":   "Patch database version info",
   }),
+  ("UI_BROWSER_V2", {
+  "MSG_TOOLS_APPEAR":     "Appearance",
+  "MSG_TOOLS_INTERFACE":  "Interface & language",
+  "MSG_TOOLS_SETTINGS":   "Global settings",
+  "MSG_TOOLS_INFO":       "System information",
+  "MSG_APPEAR_PRESET":    "Preset",
+  "MSG_APPEAR_WALLPAPER": "Wallpaper",
+  "MSG_APPEAR_BACKGROUND": "Background",
+  "MSG_APPEAR_ACCENT":    "Accent",
+  "MSG_APPEAR_SELECTION": "Selection",
+  "MSG_APPEAR_CONTRAST":  "Contrast",
+  "MSG_APPEAR_RESET":     "Reset theme",
+  }),
   ("SUPPORT_NORGAMES", {
   "MSG_NOR_EMPTY":  "Flash is empty",
   "MSG_Q5_DELNORG": "Delete this game from flash memory?",
-  "MSG_Q6_CLRNOR":  "Do you want to format the internal flash memory?",
+  "MSG_Q6_CLRNOR":  "Do you want to format the intenal flash memory?",
   "MSG_ERR_NORUPD": "Flash write failed!",                 # alertmsg
   "MSG_ERR_NORSPC": "Insufficient disk space!",            # alertmsg
   "MSG_NOR_WRITE":  "Write game to flash",
@@ -386,5 +400,3 @@ elif len(sys.argv) > 1 and sys.argv[1] == "h":
       c = ord(l[0]) | (ord(l[1]) << 8)
       print("  0x%04x,     // %s" % (c, l))
     print("};")
-
-

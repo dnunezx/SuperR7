@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 SuperFW contributors
+ * Copyright (C) 2026 Danny Nunez
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as published by
@@ -13,9 +13,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef COVER_ART_V3
+#define COVER_FORMAT_VERSION         3
+#define COVER_WIDTH                 76
+#define COVER_HEIGHT                76
+#else
 #define COVER_FORMAT_VERSION         2
 #define COVER_WIDTH                 72
 #define COVER_HEIGHT                72
+#endif
 #define COVER_PIXEL_COUNT          (COVER_WIDTH * COVER_HEIGHT)
 #define COVER_PALETTE_BASE          20
 #define COVER_MAX_PALETTE_COLORS    220

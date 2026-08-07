@@ -1,10 +1,12 @@
-name: Cover art emulator
+name: SuperR7 cover art emulator
 
 on:
   workflow_dispatch:
   push:
     branches:
       - feature/cover-art
+      - feature/ui-browser
+      - superr7/main
 
 jobs:
   mgba-cover-demo:
@@ -45,7 +47,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: superfw-cover-art-mgba-demo
+          name: superr7-cover-art-mgba-demo
           path: |
             cover-demo.gba
             firmware.demo.ewram.elf

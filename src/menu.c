@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2024 David Guillen Fandos <david@davidgf.net>
+ * Copyright (C) 2026 Danny Nunez
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,6 +21,10 @@
 
 #include "compiler.h"
 #include "cover.h"
+#include "superr7.h"
+#ifdef UI_BROWSER_V2
+#include "ui_browser_v2.h"
+#endif
 #include "gbahw.h"
 #include "patchengine.h"
 #include "fatfs/ff.h"
@@ -39,13 +44,18 @@
 #include "supercard_driver.h"
 
 #include "res/icons.h"
+#ifndef UI_BROWSER_V2
 #include "res/logo.h"
+#endif
 
 extern t_card_info sd_info;
 extern bool fastew;
 extern bool slowsd;
 
 enum {
+#ifdef UI_BROWSER_V2
+  MENUTAB_FAVORITES,     // Phase 4 destination; library support follows later.
+#endif
   MENUTAB_RECENT,        // Browses recently loaded ROMs (can be disabled / hidden)
   MENUTAB_ROMBROWSE,     // Browses ROMs and launches games.
   #ifdef SUPPORT_NORGAMES
@@ -53,6 +63,9 @@ enum {
   #endif
   MENUTAB_SETTINGS,      // General settings / defaults
   MENUTAB_UILANG,        // UI / Language settings
+#ifdef UI_BROWSER_V2
+  MENUTAB_APPEARANCE,    // Wallpaper, preset and safe derived colors.
+#endif
   MENUTAB_TOOLS,         // Tools (advaned menu)
   MENUTAB_INFO,          // Info / About / Updater?
   MENUTAB_MAX,
@@ -79,11 +92,23 @@ enum {
 #define BROWSER_MAXFN_CNT     (16*1024)
 #define RECENT_MAXFN_CNT          (200)
 #endif
+#ifdef UI_BROWSER_V2
+#define BROWSER_ROWS UI_BROWSER_V2_ROWS
+#else
 #define BROWSER_ROWS                 8
+#endif
+#ifdef UI_BROWSER_V2
+#define RECENT_ROWS UI_BROWSER_V2_ROWS
+#else
 #define RECENT_ROWS                  9
+#endif
 #define NORGAMES_ROWS                8
 
+#ifdef COVER_ART_V3
+#define COVER_PANEL_LEFT           160
+#else
 #define COVER_PANEL_LEFT           164
+#endif
 #define COVER_PANEL_TOP             42
 #define COVER_IMAGE_LEFT           (COVER_PANEL_LEFT + 2)
 #define COVER_IMAGE_TOP            (COVER_PANEL_TOP + 2)
@@ -119,7 +144,15 @@ enum {
 };
 
 enum {
+#ifdef UI_BROWSER_V2
+  ToolsAppearance = 0,
+  ToolsInterface,
+  ToolsSettings,
+  ToolsInfo,
+  ToolsSDRAMTest,
+#else
   ToolsSDRAMTest = 0,
+#endif
   ToolsSRAMTest,
   ToolsBatteryTest,
   ToolsSDBench,
@@ -129,6 +162,19 @@ enum {
   #endif
   ToolsMAX,
 };
+
+#ifdef UI_BROWSER_V2
+enum {
+  AppearancePreset = 0,
+  AppearanceWallpaper,
+  AppearanceBackground,
+  AppearanceAccent,
+  AppearanceSelection,
+  AppearanceContrast,
+  AppearanceReset,
+  AppearanceMAX = AppearanceReset,
+};
+#endif
 
 enum {
   SettTitle1   =  0,
@@ -162,7 +208,12 @@ enum {
   GbaLoadPopInfo  = 0,
   GbaLoadPopLoadS = 1,
   GbaLoadPopPatch = 2,
+  GbaLoadPopDetails = 3,
+#ifdef UI_BROWSER_V2
+  GbaLoadCNT      = 4,
+#else
   GbaLoadCNT      = 3,
+#endif
 
   GbaNorWrPatch   = 1,
   GbaNorWrCNT     = 2,
@@ -172,8 +223,14 @@ enum {
 };
 
 enum {
-  GBAInfoCNT   = 1,
-  GBALoadButt  = 0,
+  GBALoadButt    = 0,
+  GBAOptionsButt = 1,
+  GBADetailsButt = 2,
+#ifdef UI_BROWSER_V2
+  GBAInfoCNT     = 3,
+#else
+  GBAInfoCNT     = 1,
+#endif
 
   GBALdSetCNT    = 5,
   GBALdSetLoadP  = 0,
@@ -312,7 +369,15 @@ static struct {
   // Tools menu
   struct {
     int selector;                 // Render panel
+    int seloff;                   // First visible Phase 4 tool.
   } tools;
+
+#ifdef UI_BROWSER_V2
+  // Appearance settings
+  struct {
+    int selector;
+  } appearance;
+#endif
 
   // Info/About menu
   struct {
@@ -435,15 +500,22 @@ uint8_t *hiscratch = (uint8_t*)ROM_HISCRATCH_U8;
 // Keep the complete cover cache in GBA EWRAM instead.
 static t_cover_cache menu_cover_cache __attribute__((section(".sbss")));
 
+#if !defined(UI_BROWSER_V2) || defined(SUPPORT_NORGAMES)
 typedef struct {
   uint16_t x, y;
   unsigned tn;
 } t_oamobj;
+#endif
 
 static bool enable_flashing = false;
 static unsigned framen = 0;
+#if !defined(UI_BROWSER_V2) || defined(SUPPORT_NORGAMES)
 static unsigned objnum = 0;
 static t_oamobj fobjs[64];
+#endif
+#if defined(COVER_ART_DEMO) && defined(UI_BROWSER_V2)
+static int demo_loading_progress = -1;
+#endif
 
 unsigned lang_lookup(uint16_t code) {
   for (unsigned i = 0; i < LANG_COUNT; i++)
@@ -497,6 +569,16 @@ static void loadrom_progress(unsigned done, unsigned total) {
   // Draws and flips the buffer, do not care about vsync here
   volatile uint8_t *frame = &MEM_VRAM_U8[0xA000*framen];
 
+#ifdef UI_BROWSER_V2
+  bool game_loading = spop.pop_num == POPUP_GBA_LOAD;
+  ui_browser_v2_load_palette(MEM_PALETTE);
+  ui_browser_v2_render_loading(
+    frame,
+    game_loading ? file_basename(spop.p.load.i.romfn) : "WORKING",
+    game_loading ? cover_cache_pixels(&menu_cover_cache) : NULL,
+    game_loading ? menu_cover_cache.state : CoverEmpty,
+    done, total);
+#else
   // Render the full background to a solid color
   dma_memset16(&frame[0], dup8(BG_COLOR), SCREEN_WIDTH*SCREEN_HEIGHT/2);
 
@@ -504,6 +586,7 @@ static void loadrom_progress(unsigned done, unsigned total) {
   unsigned prog = done * 200 / total;
   for (unsigned i = 76; i < 84; i++)
     dma_memset16(&frame[SCREEN_WIDTH * i + 20], dup8(FG_COLOR), prog/2);
+#endif
 
   dma_memset16(MEM_OAM, 0, 256);  // Clear icons
 
@@ -1255,6 +1338,7 @@ static void flashbrowser_reload() {
   #endif
 }
 
+#if !defined(UI_BROWSER_V2) || defined(SUPPORT_NORGAMES)
 static inline void render_icon(unsigned x, unsigned y, unsigned iconn) {
   fobjs[objnum++] = (t_oamobj){x, y, 8*iconn };
 }
@@ -1262,6 +1346,7 @@ static inline void render_icon(unsigned x, unsigned y, unsigned iconn) {
 static inline void render_icon_trans(unsigned x, unsigned y, unsigned iconn) {
   fobjs[objnum++] = (t_oamobj){x, y | 0x0400, 8*iconn };
 }
+#endif
 
 // Guess the file type based on the file name.
 static unsigned guessicon(const char *path) {
@@ -1285,6 +1370,7 @@ static unsigned guessicon(const char *path) {
   return ICON_BINFILE;
 }
 
+#if !defined(UI_BROWSER_V2) || defined(SUPPORT_NORGAMES)
 // Draws text adding some support for overflow.
 #define THREEDOTS_WIDTH  9
 static void draw_text_ovf(const char *t, volatile uint8_t *frame, unsigned x, unsigned y, unsigned maxw) {
@@ -1565,7 +1651,7 @@ void render_fw_flash_popup(volatile uint8_t *frame) {
   draw_box_outline(frame, 16, 224, 64, 92, FG_COLOR);
   if (spop.p.update.issfw) {
     char tmp[32];
-    npf_snprintf(tmp, sizeof(tmp), "SuperFW (ver %lu.%lu)",
+    npf_snprintf(tmp, sizeof(tmp), SUPERR7_PRODUCT_NAME " (ver %lu.%lu)",
                  spop.p.update.superfw_ver >> 16,
                  spop.p.update.superfw_ver & 0xFFFF);
     draw_central_text(tmp, frame, 120, 70);
@@ -1615,7 +1701,8 @@ static void render_gbarom_info(volatile uint8_t *frame, const char *dispname,
   if (save_type < 0)
     draw_central_text_ovf(msgs[lang_id][MSG_LOADINFO_UNKW], frame, SCREEN_WIDTH/2, 102, SCREEN_WIDTH - 20);
   else if (issf)
-    draw_central_text_ovf("SuperFW firmware", frame, SCREEN_WIDTH/2, 102, SCREEN_WIDTH - 20);
+    draw_central_text_ovf(SUPERR7_PRODUCT_NAME " firmware", frame,
+                          SCREEN_WIDTH/2, 102, SCREEN_WIDTH - 20);
   else {
     const char *stype[] = {
       msgs[lang_id][MSG_SAVETYPE_NONE],       // SaveTypeNone
@@ -1865,6 +1952,9 @@ void render_rtcpop(volatile uint8_t *frame) {
   draw_central_text("⯆", frame, cox[spop.rtcpop.selector], 84);
 }
 
+#endif
+
+#ifndef UI_BROWSER_V2
 void render_settings(volatile uint8_t *frame) {
   char tmp[80];
   unsigned baseopt = smenu.set.selector <= 2  ? 0 :
@@ -2061,10 +2151,12 @@ void render_info(volatile uint8_t *frame) {
 
   switch (smenu.info.selector) {
   case 0:
-    draw_central_text("by davidgf", frame, 120, 70);
+    draw_central_text(SUPERR7_PRODUCT_NAME " by " SUPERR7_MAINTAINER,
+                      frame, 120, 66);
+    draw_central_text("Based on SuperFW by davidgf", frame, 120, 84);
     npf_snprintf(tmp, sizeof(tmp), "Version %lu.%lu (%08lx)", vmaj, vmin, gitver);
-    draw_central_text(tmp, frame, 120, 95);
-    draw_central_text(FW_FLAVOUR " variant", frame, 120, 114);
+    draw_central_text(tmp, frame, 120, 104);
+    draw_central_text(FW_FLAVOUR " variant", frame, 120, 123);
     break;
   case 1:
     draw_central_text("Flash info", frame, 120, 70);
@@ -2117,6 +2209,7 @@ void render_tools(volatile uint8_t *frame) {
   for (unsigned i = 0; i < 240; i += 16)
     render_icon_trans(i, 26 + smenu.tools.selector * 22, 63);
 }
+#endif
 
 void reload_theme(unsigned thnum) {
   // Palette 0..15 contains the main menu template colors
@@ -2135,6 +2228,7 @@ void reload_theme(unsigned thnum) {
   MEM_PALETTE[256 + SEL_COLOR] = themes[thnum].hi_blend;
 }
 
+#if !defined(UI_BROWSER_V2) || defined(SUPPORT_NORGAMES)
 static const struct {
   const t_mrender_fn render;
   const int max_submenu;
@@ -2148,12 +2242,501 @@ static const struct {
   { render_gba_norload,    GbaNorLoadCNT },
   #endif
 };
+#else
+static const uint8_t popup_submenus[] = {
+  0, GbaLoadCNT, 1, 1, 1,
+};
+#endif
+
+#ifdef UI_BROWSER_V2
+static t_ui_browser_v2_entry_kind ui_browser_v2_entry_kind(const t_centry *entry) {
+  if (entry->attr & AM_DIR)
+    return !strcmp(entry->fname, "..") ? UiBrowserV2Parent : UiBrowserV2Folder;
+
+  unsigned icon = guessicon(entry->fname);
+  if (icon == ICON_UPDFILE)
+    return UiBrowserV2Firmware;
+  if (icon != ICON_BINFILE)
+    return UiBrowserV2Game;
+
+  unsigned length = strlen(entry->fname);
+  if (length >= 4 && !strcasecmp(&entry->fname[length - 4], ".sav"))
+    return UiBrowserV2Save;
+  return UiBrowserV2Other;
+}
+
+static unsigned ui_tools_message(unsigned tool) {
+  switch (tool) {
+  case ToolsAppearance: return MSG_TOOLS_APPEAR;
+  case ToolsInterface:  return MSG_TOOLS_INTERFACE;
+  case ToolsSettings:   return MSG_TOOLS_SETTINGS;
+  case ToolsInfo:       return MSG_TOOLS_INFO;
+  default:              return MSG_TOOLS0_SDRAM + tool - ToolsSDRAMTest;
+  }
+}
+
+static const char *ui_setting_value(unsigned option, char *tmp, unsigned tmpsz) {
+  switch (option) {
+  case SettHotkey:
+    return hotkey_list[hotkey_combo].cname;
+  case SettBootType:
+    return msgs[lang_id][MSG_BOOT_TYPE0 + boot_bios_splash];
+  case SettFastSD:
+    return msgs[lang_id][use_slowld ? MSG_KNOB_DISABLED : MSG_KNOB_ENABLED];
+  case SettFastEWRAM:
+    return msgs[lang_id][use_fastew ? MSG_KNOB_ENABLED : MSG_KNOB_DISABLED];
+  case SettSaveLoc:
+    return save_path_default == SaveRomName ? msgs[lang_id][MSG_NEXTTO_ROM] :
+                                             save_paths[save_path_default];
+  case SettSaveBkp:
+    npf_snprintf(tmp, tmpsz, "%lu", backup_sram_default);
+    return tmp;
+  case SettStateLoc:
+    return state_path_default == StateRomName ? msgs[lang_id][MSG_NEXTTO_ROM] :
+                                                savestates_paths[state_path_default];
+  case SettCheatEn:
+    return msgs[lang_id][enable_cheats ? MSG_KNOB_ENABLED : MSG_KNOB_DISABLED];
+  case DefsPatchEng:
+    return msgs[lang_id][MSG_PATCH_TYPE0 + patcher_default];
+  case DefsGamMenu:
+    return msgs[lang_id][MSG_KNOB_DISABLED + ingamemenu_default];
+  case DefsRTCEnb:
+    return msgs[lang_id][MSG_KNOB_DISABLED + rtcpatch_default];
+  case DefsRTCVal: {
+    t_dec_date date;
+    timestamp2date(rtcvalue_default, &date);
+    npf_snprintf(tmp, tmpsz, "20%02d/%02d/%02d %02d:%02d",
+                 date.year, date.month, date.day, date.hour, date.min);
+    return tmp;
+  }
+  case DefsRTCSpeed: {
+    unsigned speed = rtcspeed_default ? MSG_UIS_SPD0 + rtcspeed_default - 1 :
+                                        MSG_STILLRTC;
+    return msgs[lang_id][speed];
+  }
+  case DefsLoadPol:
+    return msgs[lang_id][MSG_DEF_LOADP0 + (autoload_default ^ 1)];
+  case DefsSavePol:
+    return msgs[lang_id][autosave_default ? MSG_DEF_SAVEP0 : MSG_DEF_SAVEP1];
+  case DefsPrefDS:
+    return msgs[lang_id][autosave_prefer_ds ? MSG_KNOB_ENABLED : MSG_KNOB_DISABLED];
+  case SettSave:
+    return "A: SAVE";
+  default:
+    return NULL;
+  }
+}
+
+static unsigned ui_current_dock(void) {
+  return smenu.menu_tab == MENUTAB_FAVORITES ? 0 :
+         smenu.menu_tab == MENUTAB_RECENT ? 1 :
+         smenu.menu_tab == MENUTAB_ROMBROWSE ? 2 : 3;
+}
+
+static void render_ui_phase5_popup(volatile uint8_t *frame) {
+  t_ui_browser_v2_model model;
+  char value1[48];
+  memset(&model, 0, sizeof(model));
+  model.wide = true;
+  model.selected_dock = ui_current_dock();
+
+  if (spop.alert_msg) {
+    model.row_top = 40;
+    model.entry_count = 2;
+    model.selected_row = 1;
+    model.entries[0].name = spop.alert_msg;
+    model.entries[1].name = "OK";
+    model.entries[1].value = "A/B: CLOSE";
+  } else if (spop.qpop.message) {
+    model.row_top = 28;
+    model.entry_count = 3;
+    model.selected_row = spop.qpop.option + 1;
+    model.entries[0].name = spop.qpop.message;
+    model.entries[1].name = spop.qpop.default_button;
+    model.entries[2].name = spop.qpop.confirm_button;
+    model.entries[1].value = "A: SELECT";
+    model.entries[2].value = "A: SELECT";
+  } else if (spop.rtcpop.callback) {
+    static const char *const fields[] = {
+      "Year", "Month", "Day", "Hour", "Minute",
+    };
+    t_dec_date *date = &spop.rtcpop.val;
+    model.row_top = 28;
+    model.entry_count = 3;
+    model.selected_row = 1;
+    model.entries[0].name = "RTC date and time";
+    npf_snprintf(value1, sizeof(value1), "20%02d/%02d/%02d %02d:%02d",
+                 date->year, date->month, date->day, date->hour, date->min);
+    model.entries[0].value = value1;
+    model.entries[1].name = fields[spop.rtcpop.selector];
+    model.entries[1].value = "UP/DOWN";
+    model.entries[2].name = "Accept";
+    model.entries[2].value = "A: OK  B: BACK";
+  } else if (spop.pop_num == POPUP_GBA_LOAD) {
+    const t_load_gba_info *info = &spop.p.load.i;
+    model.hide_dock = true;
+    if (spop.submenu == GbaLoadPopInfo) {
+      model.layout = UiBrowserV2LayoutLaunch;
+      model.show_cover = true;
+      model.cover_state = menu_cover_cache.state;
+      model.cover_pixels = cover_cache_pixels(&menu_cover_cache);
+      model.anim_state = spop.anim;
+      model.entry_count = 4;
+      model.selected_row = spop.selector + 1;
+      model.entries[0].name = file_basename(info->romfn);
+      model.entries[0].centered = true;
+      model.entries[1].name = "Launch game";
+      model.entries[1].centered = true;
+      model.entries[2].name = "Options";
+      model.entries[2].value = "AUTOMATIC";
+      model.entries[3].name = "Details";
+      model.entries[3].value = "INFO";
+      model.footer_left = "A: SELECT";
+      model.footer_right = "B: BACK";
+    } else if (spop.submenu == GbaLoadPopLoadS) {
+      const t_load_gba_lcfg *load = &spop.p.load.l;
+      model.wide = true;
+      model.entry_count = 6;
+      model.selected_row = spop.selector + 1;
+      model.entries[0].name = "Game options";
+      model.entries[0].value = "R: ADVANCED";
+      model.entries[1].name = "Load save";
+      model.entries[1].value = msgs[lang_id][MSG_LOADER_LOADP0 + load->sram_load_type];
+      model.entries[2].name = "Save progress";
+      model.entries[2].value = msgs[lang_id][MSG_LOADER_SAVEP0 + load->sram_save_type];
+      model.entries[3].name = "RTC time";
+      if (info->rtc_patch_enabled) {
+        t_dec_date date;
+        timestamp2date(load->rtcval, &date);
+        npf_snprintf(value1, sizeof(value1), "20%02d/%02d/%02d %02d:%02d",
+                     date.year, date.month, date.day, date.hour, date.min);
+        model.entries[3].value = value1;
+      } else {
+        model.entries[3].value = "OFF";
+      }
+      model.entries[4].name = "Cheats";
+      model.entries[4].value = msgs[lang_id][load->use_cheats ?
+                               MSG_KNOB_ENABLED : MSG_KNOB_DISABLED];
+      model.entries[5].name = "Remember settings";
+      model.entries[5].value = "A: SAVE";
+      model.footer_left = "L/R: CHANGE";
+      model.footer_right = "B: QUICK";
+    } else if (spop.submenu == GbaLoadPopPatch) {
+      model.wide = true;
+      model.entry_count = 6;
+      model.selected_row = spop.selector + 1;
+      model.entries[0].name = "Advanced";
+      model.entries[0].value = "L: OPTIONS";
+      model.entries[1].name = "Compatibility";
+      model.entries[1].value = msgs[lang_id][MSG_PATCH_TYPE0 + info->patch_type];
+      model.entries[2].name = "DirectSave";
+      model.entries[2].value = msgs[lang_id][MSG_LOADER_ST0 +
+                               (info->use_dsaving ? 0 : 1)];
+      model.entries[3].name = "In-game menu";
+      model.entries[3].value = msgs[lang_id][info->ingame_menu_enabled ?
+                               MSG_KNOB_ENABLED : MSG_KNOB_DISABLED];
+      model.entries[4].name = "RTC patch";
+      model.entries[4].value = msgs[lang_id][info->rtc_patch_enabled ?
+                               MSG_KNOB_ENABLED : MSG_KNOB_DISABLED];
+      model.entries[5].name = "Build patches";
+      model.entries[5].value = "A: BUILD";
+      model.footer_left = "L/R: CHANGE";
+      model.footer_right = "B: QUICK";
+    } else {
+      static const char *const patch_details[] = {
+        "Built-in DB", "Patch engine", "Not needed", "Automatic",
+      };
+      model.wide = true;
+      model.entry_count = 6;
+      model.selected_row = 0xFF;
+      model.entries[0].name = "Game details";
+      model.entries[1].name = "Game";
+      model.entries[1].value = file_basename(info->romfn);
+      model.entries[2].name = "Game code";
+      npf_snprintf(value1, sizeof(value1), "%s v%u", info->gcode,
+                   info->romh.version);
+      model.entries[2].value = value1;
+      model.entries[3].name = "Compatibility";
+      model.entries[3].value = "READY";
+      model.entries[4].name = "Patching";
+      model.entries[4].value = patch_details[info->patch_type];
+      model.entries[5].name = "Save system";
+      model.entries[5].value = msgs[lang_id][MSG_LOADER_ST0 +
+                               (info->use_dsaving ? 0 : 1)];
+      model.footer_left = "INFO";
+      model.footer_right = "B: QUICK";
+    }
+  } else if (spop.pop_num == POPUP_SAVFILE) {
+    model.row_top = 18;
+    model.entry_count = 4;
+    model.selected_row = spop.selector;
+    for (unsigned i = 0; i < 3; i++)
+      model.entries[i].name = msgs[lang_id][MSG_SAVOPT_OPT0 + i];
+    model.entries[3].name = msgs[lang_id][MSG_CANCEL];
+  } else if (spop.pop_num == POPUP_FILE_MGR) {
+    t_centry *entry = sdr_state->fileorder[smenu.browser.selector];
+    model.row_top = 18;
+    model.entry_count = FiMgrCNT;
+    model.selected_row = spop.selector;
+    model.entries[0].name = msgs[lang_id][MSG_FMGR_DEL];
+    model.entries[1].name = msgs[lang_id][(entry->attr & AM_HID) ?
+                            MSG_FMGR_UNHIDE : MSG_FMGR_HIDE];
+#ifdef SUPPORT_NORGAMES
+    model.entries[2].name = msgs[lang_id][MSG_NOR_WRITE];
+#endif
+  } else if (spop.pop_num == POPUP_FWFLASH) {
+    model.row_top = 28;
+    model.entry_count = 3;
+    model.selected_row = 2;
+    model.entries[0].name = msgs[lang_id][MSG_FWUPD_MENU];
+    model.entries[1].name = spop.p.update.issfw ? SUPERR7_PRODUCT_NAME " firmware" :
+                                                msgs[lang_id][MSG_FWUPD_UNK];
+    static const unsigned states[] = {
+      MSG_FWUPD_GO, MSG_FWUPD_LOADING, MSG_FWUPD_CHECKING,
+      MSG_FWUPD_ERASING, MSG_FWUPD_PROGRAM,
+    };
+    model.entries[2].name = msgs[lang_id][states[spop.p.update.curr_state]];
+    model.entries[2].value = "UP+L+R";
+  }
+
+  for (unsigned i = 0; i < model.entry_count; i++)
+    model.entries[i].kind = UiBrowserV2Other;
+  ui_browser_v2_render(frame, &model);
+}
+
+static void render_ui_browser_phase4(volatile uint8_t *frame) {
+  t_ui_browser_v2_model model;
+  memset(&model, 0, sizeof(model));
+
+  model.cover_state = menu_cover_cache.state;
+  model.cover_pixels = cover_cache_pixels(&menu_cover_cache);
+  model.anim_state = smenu.anim_state;
+
+  model.selected_dock = 2;
+  if (smenu.menu_tab == MENUTAB_FAVORITES)
+    model.selected_dock = 0;
+  else if (smenu.menu_tab == MENUTAB_RECENT)
+    model.selected_dock = 1;
+  else if (smenu.menu_tab != MENUTAB_ROMBROWSE)
+    model.selected_dock = 3;
+
+  if (smenu.menu_tab == MENUTAB_ROMBROWSE) {
+    model.show_cover = true;
+    unsigned selected_row = smenu.browser.selector - smenu.browser.seloff;
+    unsigned available = smenu.browser.dispentries - smenu.browser.seloff;
+    model.entry_count = MIN(available, UI_BROWSER_V2_ROWS);
+    model.selected_row = MIN(selected_row, model.entry_count ? model.entry_count - 1 : 0);
+
+    for (unsigned i = 0; i < model.entry_count; i++) {
+      t_centry *entry = sdr_state->fileorder[smenu.browser.seloff + i];
+      model.entries[i].name = entry->fname;
+      model.entries[i].kind = ui_browser_v2_entry_kind(entry);
+      model.entries[i].hidden = !!(entry->attr & AM_HID);
+    }
+  } else if (smenu.menu_tab == MENUTAB_RECENT) {
+    model.show_cover = true;
+    unsigned selected_row = smenu.recent.selector - smenu.recent.seloff;
+    unsigned available = smenu.recent.maxentries - smenu.recent.seloff;
+    model.entry_count = MIN(available, UI_BROWSER_V2_ROWS);
+    model.selected_row = MIN(selected_row, model.entry_count ? model.entry_count - 1 : 0);
+
+    for (unsigned i = 0; i < model.entry_count; i++) {
+      t_rentry *entry = &sdr_state->rentries[smenu.recent.seloff + i];
+      model.entries[i].name = &entry->fpath[entry->fname_offset];
+      model.entries[i].kind = UiBrowserV2Game;
+    }
+  } else if (smenu.menu_tab == MENUTAB_TOOLS) {
+    model.wide = true;
+    model.entry_count = MIN(ToolsMAX - smenu.tools.seloff,
+                            UI_BROWSER_V2_ROWS);
+    model.selected_row = smenu.tools.selector - smenu.tools.seloff;
+    for (unsigned i = 0; i < model.entry_count; i++) {
+      unsigned tool = smenu.tools.seloff + i;
+      model.entries[i].name = msgs[lang_id][ui_tools_message(tool)];
+      model.entries[i].kind = UiBrowserV2Other;
+    }
+  } else if (smenu.menu_tab == MENUTAB_APPEARANCE) {
+    static const unsigned labels[] = {
+      MSG_APPEAR_PRESET, MSG_APPEAR_WALLPAPER, MSG_APPEAR_BACKGROUND,
+      MSG_APPEAR_ACCENT, MSG_APPEAR_SELECTION, MSG_APPEAR_CONTRAST,
+      MSG_APPEAR_RESET,
+    };
+    const char *values[] = {
+      ui_theme_preset_names[ui_theme_preset],
+      ui_wallpaper_names[ui_wallpaper],
+      ui_theme_color_names[ui_background_color],
+      ui_theme_color_names[ui_accent_color],
+      ui_theme_color_names[ui_selection_color],
+      ui_contrast_names[ui_contrast],
+      "A: RESET",
+    };
+    model.wide = true;
+    model.entry_count = ARRAY_SIZE(labels);
+    model.selected_row = smenu.appearance.selector;
+    for (unsigned i = 0; i < model.entry_count; i++) {
+      model.entries[i].name = msgs[lang_id][labels[i]];
+      model.entries[i].value = values[i];
+      model.entries[i].kind = UiBrowserV2Other;
+    }
+  } else if (smenu.menu_tab == MENUTAB_SETTINGS) {
+    static const unsigned labels[SettMAX + 1] = {
+      MSG_SET_TITL1, MSG_SETT_HOTK, MSG_SETT_BOOT, MSG_SETT_FASTSD,
+      MSG_SETT_FASTEW, MSG_SETT_SAVET, MSG_SETT_SAVEBK, MSG_SETT_STATET,
+      MSG_SETT_CHTEN, MSG_SET_TITL2, MSG_DEFS_PATCH, MSG_LOADER_MENU,
+      MSG_LOADER_RTCE, MSG_DEF_RTCVAL, MSG_DEF_SPEED, MSG_LOADER_LOADP,
+      MSG_LOADER_SAVEP, MSG_LOADER_PREFDS, MSG_UIS_SAVE,
+    };
+    char values[UI_BROWSER_V2_ROWS][32];
+    unsigned base = smenu.set.selector <= 3 ? 0 :
+                    smenu.set.selector >= SettMAX - 3 ? SettMAX - 6 :
+                                                       smenu.set.selector - 3;
+    model.wide = true;
+    model.entry_count = MIN(SettMAX + 1 - base, UI_BROWSER_V2_ROWS);
+    model.selected_row = smenu.set.selector - base;
+    for (unsigned i = 0; i < model.entry_count; i++) {
+      unsigned option = base + i;
+      model.entries[i].name = msgs[lang_id][labels[option]];
+      model.entries[i].value = ui_setting_value(option, values[i], sizeof(values[i]));
+      model.entries[i].kind = UiBrowserV2Other;
+    }
+  } else if (smenu.menu_tab == MENUTAB_UILANG) {
+    static const unsigned labels[UiSetMAX] = {
+      MSG_UIS_LANG, MSG_UIS_RECNT, MSG_UIS_ANSPD, MSG_UIS_BHID, MSG_UIS_SAVE,
+    };
+    const char *values[UiSetMAX] = {
+      msgs[lang_id][MSG_LANG_NAME],
+      msgs[lang_id][recent_menu ? MSG_KNOB_ENABLED : MSG_KNOB_DISABLED],
+      msgs[lang_id][MSG_UIS_SPD0 + anim_speed],
+      msgs[lang_id][hide_hidden ? MSG_KNOB_DISABLED : MSG_KNOB_ENABLED],
+      "A: SAVE",
+    };
+    model.wide = true;
+    model.entry_count = UiSetMAX;
+    model.selected_row = smenu.uiset.selector - UiSetLang;
+    for (unsigned i = 0; i < model.entry_count; i++) {
+      model.entries[i].name = msgs[lang_id][labels[i]];
+      model.entries[i].value = values[i];
+      model.entries[i].kind = UiBrowserV2Other;
+    }
+  } else if (smenu.menu_tab == MENUTAB_INFO) {
+    char value1[40], value2[40], value3[40];
+    model.wide = true;
+    model.selected_row = 0;
+    model.entries[0].value = "A: NEXT";
+    if (smenu.info.selector == 0) {
+      model.entry_count = 5;
+      model.entries[0].name = SUPERR7_PRODUCT_NAME;
+      model.entries[1].name = "Maintainer";
+      model.entries[1].value = SUPERR7_MAINTAINER;
+      model.entries[2].name = "Based on";
+      model.entries[2].value = SUPERR7_UPSTREAM_NAME " by " SUPERR7_UPSTREAM_AUTHOR;
+      model.entries[3].name = "Version";
+      npf_snprintf(value2, sizeof(value2), "%lu.%lu",
+                   (uint32_t)(VERSION_WORD >> 16),
+                   (uint32_t)(VERSION_WORD & 0xFFFF));
+      model.entries[3].value = value2;
+      model.entries[4].name = "Build";
+      npf_snprintf(value3, sizeof(value3), FW_FLAVOUR " %08lx",
+                   (uint32_t)VERSION_SLUG_WORD);
+      model.entries[4].value = value3;
+    } else if (smenu.info.selector == 1) {
+      model.entry_count = 4;
+      model.entries[0].name = "Flash info";
+      model.entries[1].name = "Device ID";
+      npf_snprintf(value1, sizeof(value1), "%08lx", flashinfo.deviceid);
+      model.entries[1].value = value1;
+      model.entries[2].name = "Capacity";
+      if (flashinfo.size)
+        human_size_kb(value2, sizeof(value2), flashinfo.size >> 10);
+      else
+        npf_snprintf(value2, sizeof(value2), "%d KiB", FW_MAX_SIZE_KB);
+      model.entries[2].value = value2;
+      model.entries[3].name = "Updater";
+      model.entries[3].value = enable_flashing ? "Enabled" : "Locked";
+    } else if (smenu.info.selector == 2) {
+      model.entry_count = 3;
+      model.entries[0].name = "Patch database";
+      model.entries[1].name = "Version";
+      npf_snprintf(value1, sizeof(value1), "%s - %s", pdbinfo.version, pdbinfo.date);
+      model.entries[1].value = value1;
+      model.entries[2].name = "Game count";
+      npf_snprintf(value2, sizeof(value2), "%lu", pdbinfo.patch_count);
+      model.entries[2].value = value2;
+    } else {
+      model.entry_count = 4;
+      model.entries[0].name = "SD card";
+      model.entries[1].name = "Type";
+      model.entries[1].value = sd_info.sdhc ? "SDHC" : "SDSC";
+      model.entries[2].name = "Capacity";
+      human_size_kb(value2, sizeof(value2), sd_info.block_cnt / 2);
+      model.entries[2].value = value2;
+      model.entries[3].name = "Card ID";
+      npf_snprintf(value3, sizeof(value3), "%02x | %04x",
+                   sd_info.manufacturer, sd_info.oemid);
+      model.entries[3].value = value3;
+    }
+    for (unsigned i = 0; i < model.entry_count; i++)
+      model.entries[i].kind = UiBrowserV2Other;
+  } else {
+    model.wide = true;
+  }
+
+  ui_browser_v2_render(frame, &model);
+}
+#endif
 
 // Renders the menu. Arg0 represents the frame count difference with the
 // previous rendered frame (for animations and similar stuff).
 void menu_render(unsigned fcnt) {
+#if !defined(UI_BROWSER_V2) || defined(SUPPORT_NORGAMES)
   objnum = 0;
+#endif
   volatile uint8_t *frame = &MEM_VRAM_U8[0xA000*framen];
+
+#if defined(COVER_ART_DEMO) && defined(UI_BROWSER_V2)
+  if (demo_loading_progress >= 0) {
+    ui_browser_v2_load_palette(MEM_PALETTE);
+    ui_browser_v2_render_loading(
+      frame, file_basename(spop.p.load.i.romfn),
+      cover_cache_pixels(&menu_cover_cache), menu_cover_cache.state,
+      demo_loading_progress, 100);
+    demo_loading_progress = MIN(100, demo_loading_progress + fcnt);
+    return;
+  }
+#endif
+
+#if defined(UI_BROWSER_V2) && !defined(SUPPORT_NORGAMES)
+  ui_browser_v2_load_palette(MEM_PALETTE);
+  if (spop.alert_msg || spop.qpop.message || spop.rtcpop.callback ||
+      spop.pop_num)
+    render_ui_phase5_popup(frame);
+  else
+    render_ui_browser_phase4(frame);
+  smenu.anim_state += fcnt * animspd_lut[anim_speed];
+  REG_WIN0H = 0;
+  REG_WIN0V = 0;
+#else
+#ifdef UI_BROWSER_V2
+  bool phase4_tab = smenu.menu_tab == MENUTAB_FAVORITES ||
+                    smenu.menu_tab == MENUTAB_RECENT ||
+                    smenu.menu_tab == MENUTAB_ROMBROWSE ||
+                    smenu.menu_tab == MENUTAB_SETTINGS ||
+                    smenu.menu_tab == MENUTAB_UILANG ||
+                    smenu.menu_tab == MENUTAB_APPEARANCE ||
+                    smenu.menu_tab == MENUTAB_TOOLS ||
+                    smenu.menu_tab == MENUTAB_INFO;
+  bool use_browser_v2 = phase4_tab;
+  if (use_browser_v2) {
+    ui_browser_v2_load_palette(MEM_PALETTE);
+    if (spop.alert_msg || spop.qpop.message || spop.rtcpop.callback ||
+        spop.pop_num)
+      render_ui_phase5_popup(frame);
+    else
+      render_ui_browser_phase4(frame);
+    smenu.anim_state += fcnt * animspd_lut[anim_speed];
+  } else {
+    reload_theme(menu_theme);
+#endif
 
   // Render the tab menu on top (rows 0..15), highlighting the selected option
   dma_memset16(&frame[0], dup8(FG_COLOR), SCREEN_WIDTH*16/2);
@@ -2170,24 +2753,48 @@ void menu_render(unsigned fcnt) {
   dma_memset16(&frame[16*SCREEN_WIDTH], dup8(BG_COLOR), SCREEN_WIDTH*(SCREEN_HEIGHT-16) / 2);
 
   if (spop.qpop.message)
+#if defined(UI_BROWSER_V2) && !defined(SUPPORT_NORGAMES)
+    render_ui_phase5_popup(frame);
+#else
     render_popupq(frame, fcnt);
+#endif
   else if (spop.rtcpop.callback)
+#if defined(UI_BROWSER_V2) && !defined(SUPPORT_NORGAMES)
+    render_ui_phase5_popup(frame);
+#else
     render_rtcpop(frame);
+#endif
   else {
     if (spop.pop_num) {
+#if defined(UI_BROWSER_V2) && !defined(SUPPORT_NORGAMES)
+      ui_browser_v2_load_palette(MEM_PALETTE);
+      render_ui_phase5_popup(frame);
+#else
       popup_windows[spop.pop_num - 1].render(frame);
       spop.anim += fcnt * animspd_lut[anim_speed];
+#endif
     } else {
       static const t_mrender_fn renderfns[] = {
+#ifdef UI_BROWSER_V2
+        render_browser,
+#endif
         render_recent,
         render_browser,
         #ifdef SUPPORT_NORGAMES
         render_flashbrowser,
         #endif
+#ifdef UI_BROWSER_V2
+        render_browser,
+        render_browser,
+        render_browser,
+        render_browser,
+        render_browser,
+#else
         render_settings,
         render_ui_settings,
         render_tools,
         render_info,
+#endif
       };
       renderfns[smenu.menu_tab](frame);
       if (smenu.menu_tab == MENUTAB_RECENT || smenu.menu_tab == MENUTAB_ROMBROWSE)
@@ -2196,8 +2803,16 @@ void menu_render(unsigned fcnt) {
     }
   }
 
+#ifdef UI_BROWSER_V2
+  }
+#endif
+
   // Render popup window. Use windowing to ensure the pop up is not covered by OBJs.
+#ifdef UI_BROWSER_V2
+  if (spop.alert_msg && !use_browser_v2) {
+#else
   if (spop.alert_msg) {
+#endif
     draw_box_full(frame, 15, 227, SCREEN_HEIGHT / 2 - 20, SCREEN_HEIGHT / 2 + 20, FG_COLOR, HI_COLOR);
     draw_central_text(spop.alert_msg, frame, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 8);
     REG_WIN0H = 226 | (14 << 8);
@@ -2206,15 +2821,18 @@ void menu_render(unsigned fcnt) {
     REG_WIN0H = 0;
     REG_WIN0V = 0;
   }
+#endif
 }
 
 void menu_flip() {
+#if !defined(UI_BROWSER_V2) || defined(SUPPORT_NORGAMES)
   for (unsigned i = 0; i < objnum; i++) {
     MEM_OAM[i*4+0] = fobjs[i].y | 0x2000;  // Use 256 entries palette
     MEM_OAM[i*4+1] = fobjs[i].x | 0x4000;  // Size 16x16
     MEM_OAM[i*4+2] = fobjs[i].tn + 512;    // OBJ numbers start at 512 for Mode 4
   }
   dma_memset16(&MEM_OAM[objnum*4], 0, 256 - objnum*2);  // Clear unused objects
+#endif
   REG_DISPCNT = (REG_DISPCNT & ~0x10) | (framen << 4);
   framen ^= 1;
 }
@@ -2256,11 +2874,17 @@ void menu_update() {
 }
 
 static void menu_setup_display() {
+#if !defined(UI_BROWSER_V2) || defined(SUPPORT_NORGAMES)
   // Load icons into VRAM
   dma_memcpy16(MEM_VRAM_OBJS, icons_img, sizeof(icons_img) / 2);
   dma_memcpy16(&MEM_PALETTE[256], icons_pal, sizeof(icons_pal) / 2);
   // Generate some icons (selector)
   dma_memset16(&MEM_VRAM_OBJS[63 * 256], dup8(SEL_COLOR), 256 / 2);
+#else
+  // The redesigned SD UI draws directly into the Mode 4 framebuffer and does
+  // not use the classic OBJ icon atlas or selector sprites.
+  dma_memset16(MEM_OAM, 0, 256);
+#endif
 
   // Further setup initial video regs. BG2 is setup in the bootloader already!
   REG_WININ  = 0x0004;     // Only BG2 is enabled in Win0
@@ -2282,6 +2906,9 @@ void menu_demo_init() {
     "Missing.gba",
     "Broken.gba",
     "Folder",
+    "A Very Long Adventure Game Name.gba",
+    "Seventh Entry.sav",
+    "Eighth Entry.fw",
   };
   static const char *recent_paths[] = {
     "/DEMO/Aurora.gba",
@@ -2299,7 +2926,7 @@ void menu_demo_init() {
     t_centry *entry = &sdr_state->fentries[i];
     strcpy(entry->fname, browser_names[i]);
     entry->filesize = (i + 1) * 1024 * 1024;
-    entry->isdir = i == ARRAY_SIZE(browser_names) - 1;
+    entry->isdir = i == 4;
     entry->attr = entry->isdir ? AM_DIR : 0;
     sdr_state->fileorder[i] = entry;
   }
@@ -2314,6 +2941,10 @@ void menu_demo_init() {
 
   cover_cache_init(&menu_cover_cache);
   reload_theme(2);  // High-contrast blue theme for reference screenshots.
+#ifdef UI_BROWSER_V2
+  ui_theme_reset(UiThemeElectricBlue);
+  ui_browser_v2_load_palette(MEM_PALETTE);
+#endif
   smenu.menu_tab = MENUTAB_ROMBROWSE;
   menu_cover_request_selected();
   menu_setup_display();
@@ -2336,7 +2967,11 @@ void menu_init(int sram_testres) {
 
   reload_theme(menu_theme);
 
+#ifdef UI_BROWSER_V2
+  smenu.menu_tab = MENUTAB_ROMBROWSE;
+#else
   smenu.menu_tab = (recent_menu && smenu.recent.maxentries) ? MENUTAB_RECENT : MENUTAB_ROMBROWSE;
+#endif
   menu_cover_request_selected();
   menu_setup_display();
 
@@ -2440,6 +3075,9 @@ static void keypress_popup_loadgba(unsigned newkeys) {
     GBAInfoCNT,
     GBALdSetCNT,
     GBAPatchCNT,
+#ifdef UI_BROWSER_V2
+    1,
+#endif
   };
   unsigned maxsel = maxm[(int)spop.submenu];
 
@@ -2591,7 +3229,24 @@ static void keypress_popup_loadgba(unsigned newkeys) {
       save_rom_settings(spop.p.load.i.romfn, &ld_sett, &lh_sett);
       spop.alert_msg = msgs[lang_id][MSG_REMEMB_CFG_OK];
     }
-    else if (GbaLoadPopInfo == spop.submenu) {
+#ifdef UI_BROWSER_V2
+    else if (GbaLoadPopInfo == spop.submenu &&
+             spop.selector == GBAOptionsButt) {
+      spop.submenu = GbaLoadPopLoadS;
+      spop.selector = 0;
+    }
+    else if (GbaLoadPopInfo == spop.submenu &&
+             spop.selector == GBADetailsButt) {
+      spop.submenu = GbaLoadPopDetails;
+      spop.selector = 0;
+    }
+#endif
+    else if (GbaLoadPopInfo == spop.submenu &&
+             spop.selector == GBALoadButt) {
+#if defined(COVER_ART_DEMO) && defined(UI_BROWSER_V2)
+      demo_loading_progress = 0;
+      return;
+#endif
       // Insert the ROM into the recent list (or move it around). Flush to disk!
       if (recent_menu)
         insert_recent_flush(spop.p.load.i.romfn);
@@ -2997,6 +3652,56 @@ static void keypress_popup_filemgr(unsigned newkeys) {
   }
 }
 
+#ifdef UI_BROWSER_V2
+static void keypress_menu_favorites(unsigned newkeys) {
+  (void)newkeys;
+}
+
+static uint32_t cycle_setting(uint32_t value, unsigned count, int direction) {
+  return (value + count + direction) % count;
+}
+
+static void keypress_menu_appearance(unsigned newkeys) {
+  if (newkeys & KEY_BUTTUP)
+    smenu.appearance.selector = MAX(0, smenu.appearance.selector - 1);
+  if (newkeys & KEY_BUTTDOWN)
+    smenu.appearance.selector = MIN(AppearanceMAX,
+                                    smenu.appearance.selector + 1);
+
+  int direction = (newkeys & KEY_BUTTLEFT) ? -1 :
+                  (newkeys & KEY_BUTTRIGHT) ? 1 : 0;
+  if (direction) {
+    switch (smenu.appearance.selector) {
+    case AppearancePreset:
+      ui_theme_reset(cycle_setting(ui_theme_preset, UiThemePresetCount,
+                                   direction));
+      break;
+    case AppearanceWallpaper:
+      ui_wallpaper = cycle_setting(ui_wallpaper, UiWallpaperCount, direction);
+      break;
+    case AppearanceBackground:
+      ui_background_color = cycle_setting(ui_background_color, UiColorCount,
+                                          direction);
+      break;
+    case AppearanceAccent:
+      ui_accent_color = cycle_setting(ui_accent_color, UiColorCount, direction);
+      break;
+    case AppearanceSelection:
+      ui_selection_color = cycle_setting(ui_selection_color, UiColorCount,
+                                         direction);
+      break;
+    case AppearanceContrast:
+      ui_contrast = cycle_setting(ui_contrast, UiContrastCount, direction);
+      break;
+    }
+  }
+
+  if ((newkeys & KEY_BUTTA) &&
+      smenu.appearance.selector == AppearanceReset)
+    ui_theme_reset(ui_theme_preset);
+}
+#endif
+
 static void keypress_menu_recent(unsigned newkeys) {
   if (smenu.recent.maxentries) {
     if (newkeys & KEY_BUTTUP)
@@ -3082,6 +3787,43 @@ static void keypress_menu_browse(unsigned newkeys) {
     }
     else if (newkeys & KEY_BUTTSEL) {
       // Shows a file management menu.
+      spop.pop_num = POPUP_FILE_MGR;
+      spop.anim = 0;
+      spop.selector = 0;
+    }
+#else
+    if (newkeys & KEY_BUTTA) {
+      t_centry *e = sdr_state->fileorder[smenu.browser.selector];
+      unsigned length = strlen(e->fname);
+      if (length >= 4 && !strcasecmp(&e->fname[length - 4], ".gba")) {
+        memset(&spop.p.load, 0, sizeof(spop.p.load));
+        strcpy(spop.p.load.i.romfn, e->fname);
+        strcpy(spop.p.load.i.gcode, "DEMO");
+        spop.p.load.i.romh.version = 1;
+        spop.p.load.i.patch_type = PatchNone;
+        spop.p.load.i.use_dsaving = true;
+        spop.p.load.i.ingame_menu_enabled = true;
+        spop.p.load.i.rtc_patch_enabled = true;
+        spop.p.load.l.sram_load_type = SaveLoadReset;
+        spop.p.load.l.sram_save_type = SaveDirect;
+        spop.p.load.l.rtcval = rtcvalue_default;
+        spop.p.load.l.cheats_found = true;
+        spop.p.load.l.use_cheats = true;
+        spop.pop_num = POPUP_GBA_LOAD;
+        spop.submenu = GbaLoadPopInfo;
+        spop.selector = GBALoadButt;
+      } else if (length >= 4 && !strcasecmp(&e->fname[length - 4], ".sav")) {
+        strcpy(spop.p.savopt.savfn, e->fname);
+        spop.pop_num = POPUP_SAVFILE;
+        spop.selector = 0;
+      } else if (guessicon(e->fname) == ICON_UPDFILE) {
+        strcpy(spop.p.update.fn, e->fname);
+        spop.p.update.issfw = true;
+        spop.p.update.curr_state = 0;
+        spop.pop_num = POPUP_FWFLASH;
+        spop.selector = 0;
+      }
+    } else if (newkeys & KEY_BUTTSEL) {
       spop.pop_num = POPUP_FILE_MGR;
       spop.anim = 0;
       spop.selector = 0;
@@ -3182,10 +3924,25 @@ static void keypress_menu_norbrowse(unsigned newkeys) {
 #endif
 
 static void keypress_menu_settings(unsigned newkeys) {
+#ifdef UI_BROWSER_V2
+  if (smenu.set.selector == SettTitle1 || smenu.set.selector == SettTitle2)
+    smenu.set.selector++;
+  if (newkeys & KEY_BUTTUP) {
+    smenu.set.selector = MAX(SettHotkey, smenu.set.selector - 1);
+    if (smenu.set.selector == SettTitle2)
+      smenu.set.selector--;
+  }
+  if (newkeys & KEY_BUTTDOWN) {
+    smenu.set.selector = MIN(SettMAX, smenu.set.selector + 1);
+    if (smenu.set.selector == SettTitle2)
+      smenu.set.selector++;
+  }
+#else
   if (newkeys & KEY_BUTTUP)
     smenu.set.selector = MAX(0, smenu.set.selector - 1);
   if (newkeys & KEY_BUTTDOWN)
     smenu.set.selector = MIN(SettMAX, smenu.set.selector + 1);
+#endif
   if (newkeys & KEY_BUTTLEFT) {
     if (smenu.set.selector == SettHotkey)
       hotkey_combo = (hotkey_combo + hotkey_listcnt - 1) % hotkey_listcnt;
@@ -3243,7 +4000,11 @@ static void keypress_menu_settings(unsigned newkeys) {
     spop.rtcpop.callback = accept_rtc;
   }
   if (newkeys & KEY_BUTTA && smenu.set.selector == SettSave) {
+#ifdef UI_BROWSER_V2
+    smenu.set.selector = SettHotkey;
+#else
     smenu.set.selector = 0;
+#endif
     if (save_settings())
       spop.alert_msg = msgs[lang_id][MSG_OK_SETSAVE];
     else
@@ -3252,8 +4013,15 @@ static void keypress_menu_settings(unsigned newkeys) {
 }
 
 static void keypress_menu_uisettings(unsigned newkeys) {
+#ifdef UI_BROWSER_V2
+  if (smenu.uiset.selector < UiSetLang)
+    smenu.uiset.selector = UiSetLang;
+  if (newkeys & KEY_BUTTUP)
+    smenu.uiset.selector = MAX(UiSetLang, smenu.uiset.selector - 1);
+#else
   if (newkeys & KEY_BUTTUP)
     smenu.uiset.selector = MAX(0, smenu.uiset.selector - 1);
+#endif
   if (newkeys & KEY_BUTTDOWN)
     smenu.uiset.selector = MIN(UiSetMAX, smenu.uiset.selector + 1);
   if (newkeys & KEY_BUTTLEFT) {
@@ -3282,7 +4050,11 @@ static void keypress_menu_uisettings(unsigned newkeys) {
   }
 
   if (newkeys & KEY_BUTTA && smenu.uiset.selector == UiSetSave) {
+#ifdef UI_BROWSER_V2
+    smenu.uiset.selector = UiSetLang;
+#else
     smenu.uiset.selector = 0;
+#endif
     if (save_ui_settings())
       spop.alert_msg = msgs[lang_id][MSG_OK_SETSAVE];
     else
@@ -3298,7 +4070,34 @@ static void keypress_menu_tools(unsigned newkeys) {
   if (newkeys & KEY_BUTTDOWN)
     smenu.tools.selector = MIN(ToolsMAX - 1, smenu.tools.selector + 1);
 
+#ifdef UI_BROWSER_V2
+  if (smenu.tools.selector < smenu.tools.seloff)
+    smenu.tools.seloff = smenu.tools.selector;
+  else if (smenu.tools.selector >= smenu.tools.seloff + UI_BROWSER_V2_ROWS)
+    smenu.tools.seloff = smenu.tools.selector - UI_BROWSER_V2_ROWS + 1;
+#endif
+
   if (newkeys & KEY_BUTTA) {
+#ifdef UI_BROWSER_V2
+    if (smenu.tools.selector == ToolsAppearance) {
+      smenu.menu_tab = MENUTAB_APPEARANCE;
+      return;
+    }
+    if (smenu.tools.selector == ToolsInterface) {
+      smenu.uiset.selector = UiSetLang;
+      smenu.menu_tab = MENUTAB_UILANG;
+      return;
+    }
+    if (smenu.tools.selector == ToolsSettings) {
+      smenu.set.selector = SettHotkey;
+      smenu.menu_tab = MENUTAB_SETTINGS;
+      return;
+    }
+    if (smenu.tools.selector == ToolsInfo) {
+      smenu.menu_tab = MENUTAB_INFO;
+      return;
+    }
+#endif
     if (smenu.tools.selector == ToolsSDRAMTest) {
       // Performs a test on the SRAM/SDRAM, ensure they are fine.
       set_supercard_mode(MAPPED_SDRAM, true, false);
@@ -3378,8 +4177,41 @@ static void keypress_menu_info(unsigned newkeys) {
     enable_flashing = true;
 }
 
+#ifdef UI_BROWSER_V2
+static unsigned phase4_dock_for_tab(unsigned tab) {
+  if (tab == MENUTAB_FAVORITES)
+    return 0;
+  if (tab == MENUTAB_RECENT)
+    return 1;
+  if (tab == MENUTAB_ROMBROWSE)
+    return 2;
+  return 3;
+}
+
+static void phase4_select_dock(unsigned dock) {
+  static const uint8_t tabs[] = {
+    MENUTAB_FAVORITES, MENUTAB_RECENT, MENUTAB_ROMBROWSE, MENUTAB_TOOLS,
+  };
+  smenu.menu_tab = tabs[dock % ARRAY_SIZE(tabs)];
+}
+#endif
+
 
 void menu_keypress(unsigned newkeys) {
+#if defined(COVER_ART_DEMO) && defined(UI_BROWSER_V2)
+  if (demo_loading_progress >= 0) {
+    if (newkeys & KEY_BUTTSEL) {
+      ui_theme_reset((ui_theme_preset + 1) % UiThemePresetCount);
+      demo_loading_progress = 50;
+    } else if (newkeys & KEY_BUTTB) {
+      demo_loading_progress = -1;
+      spop.submenu = GbaLoadPopInfo;
+      spop.selector = GBALoadButt;
+    }
+    return;
+  }
+#endif
+
   if (spop.alert_msg) {
     // Modal message pop up!
     if (newkeys & (KEY_BUTTA | KEY_BUTTB))
@@ -3425,15 +4257,27 @@ void menu_keypress(unsigned newkeys) {
     }
   }
   else if (spop.pop_num) {
+#if defined(UI_BROWSER_V2) && !defined(SUPPORT_NORGAMES)
+    const int subcnt = popup_submenus[spop.pop_num];
+#else
     const int subcnt = popup_windows[spop.pop_num - 1].max_submenu;
+#endif
     if (newkeys & KEY_BUTTL)
       spop.submenu = (spop.submenu + subcnt - 1) % subcnt;
     if (newkeys & KEY_BUTTR)
       spop.submenu = (spop.submenu + 1) % subcnt;
 
     // Close pop-up on B button
-    if (newkeys & KEY_BUTTB)
-      spop.pop_num = 0;
+    if (newkeys & KEY_BUTTB) {
+#ifdef UI_BROWSER_V2
+      if (spop.pop_num == POPUP_GBA_LOAD &&
+          spop.submenu != GbaLoadPopInfo) {
+        spop.submenu = GbaLoadPopInfo;
+        spop.selector = GBALoadButt;
+      } else
+#endif
+        spop.pop_num = 0;
+    }
     else {
       const t_mkeyupd_fn keyfns[] = {
         NULL,
@@ -3449,17 +4293,45 @@ void menu_keypress(unsigned newkeys) {
       keyfns[spop.pop_num](newkeys);
     }
   } else {
+#ifdef UI_BROWSER_V2
+    bool secondary_tools = smenu.menu_tab == MENUTAB_SETTINGS ||
+                           smenu.menu_tab == MENUTAB_UILANG ||
+                           smenu.menu_tab == MENUTAB_APPEARANCE ||
+                           smenu.menu_tab == MENUTAB_INFO;
+    if ((newkeys & KEY_BUTTB) && secondary_tools) {
+      if (smenu.menu_tab == MENUTAB_APPEARANCE && !save_ui_settings())
+        spop.alert_msg = msgs[lang_id][MSG_ERR_SETSAVE];
+      smenu.menu_tab = MENUTAB_TOOLS;
+      newkeys &= ~KEY_BUTTB;
+    }
+
+    // Shoulder buttons move only between the four visible dock destinations.
+    unsigned dock = phase4_dock_for_tab(smenu.menu_tab);
+    if (newkeys & KEY_BUTTL) {
+      if (smenu.menu_tab == MENUTAB_APPEARANCE)
+        save_ui_settings();
+      phase4_select_dock((dock + 3) % 4);
+    } else if (newkeys & KEY_BUTTR) {
+      if (smenu.menu_tab == MENUTAB_APPEARANCE)
+        save_ui_settings();
+      phase4_select_dock((dock + 1) % 4);
+    }
+#else
     // Menu change via trigger buttons
     int mintab = (recent_menu && smenu.recent.maxentries) ? MENUTAB_RECENT : MENUTAB_ROMBROWSE;
     if (newkeys & KEY_BUTTL)
       smenu.menu_tab = MAX((int)smenu.menu_tab - 1, mintab);
     else if (newkeys & KEY_BUTTR)
       smenu.menu_tab = MIN(smenu.menu_tab + 1, MENUTAB_MAX - 1);
+#endif
 
     if (newkeys & (KEY_BUTTL | KEY_BUTTR | KEY_BUTTUP | KEY_BUTTDOWN))
       smenu.anim_state = 0;
 
     const t_mkeyupd_fn keyfns[] = {
+#ifdef UI_BROWSER_V2
+      keypress_menu_favorites,
+#endif
       keypress_menu_recent,
       keypress_menu_browse,
       #ifdef SUPPORT_NORGAMES
@@ -3467,6 +4339,9 @@ void menu_keypress(unsigned newkeys) {
       #endif
       keypress_menu_settings,
       keypress_menu_uisettings,
+#ifdef UI_BROWSER_V2
+      keypress_menu_appearance,
+#endif
       keypress_menu_tools,
       keypress_menu_info,
     };

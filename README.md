@@ -1,16 +1,17 @@
+# SuperR7
 
-SuperFW
-=======
+SuperR7 is an independent GPL firmware for SuperCard GBA flash carts,
+maintained by **Danny Nunez**. It begins from the hardware-validated Phase 5
+cover-art and card-interface work developed from David Guillen Fandos's
+[SuperFW](https://github.com/davidgfnet/superfw).
 
-An alternative firmware for Supercard GBA flash carts
+SuperR7 keeps SuperFW's original license, copyright notices, technical credit,
+and compatible `/.superfw/` SD-card layout. The projects have independent
+roadmaps and releases; the upstream SuperFW repository is retained as a
+read-only source for selectively reviewed fixes.
 
-This project aims to provide a more modern and better firmware for Supercard
-flash carts (which are still widely used and very cheaply available). The goal
-is to add many features only present in more expensive or sophisticated flash
-carts. Unfortunately we are limited to the actual hardware so certain features
-are impossible or very complex to implement.
-
-Find the website and documentation at https://superfw.davidgf.net/
+The original SuperFW website and documentation remain useful for inherited
+firmware behavior: https://superfw.davidgf.net/
 
 
 Installation
@@ -23,7 +24,7 @@ SuperCard firmware or SCFW) and loaded as a regular game. It can also be
 installed on the internal flash device. Installing it enables some nice
 features such as SDHC and exFAT compatibility.
 
-To install the firmware you can simply load it first, and then use SuperFW
+To install the firmware you can simply load it first, and then use SuperR7
 to flash itself on the flash. You will need to enable flashing in the Info
 tab and then pick the .fw file and flash it. It is strongly recommended to
 reboot your GBA after flashing.
@@ -44,7 +45,7 @@ emulator binary (the Lite build doesn't ship any emulator though).Picking any
 .gb/.gbc file will load the emulator and the ROM and start its execution.
 
 Other devices can also be played as long as the right emulator is installed in
-the SD card (and supported by SuperFW).
+the SD card (and supported by SuperR7).
 
 Check https://superfw.davidgf.net/docs/usermanual/emulators/ for details.
 
@@ -75,11 +76,11 @@ https://patchtool.superfw.davidgf.net/
 In-game menu
 ------------
 
-SuperFW features an in-game menu that allows users to pause the current game
+SuperR7 inherits SuperFW's in-game menu, which allows users to pause the current game
 and perform certain actions such as:
 
   - Resuming and resetting the game
-  - Going back to the SuperFW menu (witout having to reboot your GBA)
+  - Going back to the SuperR7 menu (without having to reboot your GBA)
   - Handling saves (for games that allow saving)
   - Creating and restoring savestates
   - Applying/using cheat codes
@@ -100,7 +101,7 @@ Saving games
 ------------
 
 Save games are stored in the cart's SRAM and preserved by the cart battery
-(note that if the battery is dead the game will be lost). On reboot SuperFW
+(note that if the battery is dead the game will be lost). On reboot SuperR7
 will write the savegame to the SD card to preserve it and allow loading
 another save game.
 
@@ -119,8 +120,9 @@ an option for direct-saving (this is the default choice in Auto mode).
 Files and configuration on the SD card
 --------------------------------------
 
-All SuperFW related files are stored under "/.superfw" at the root of the card.
-The following files are usually created:
+SuperR7 intentionally stores compatible firmware files under `/.superfw` at
+the root of the card, so existing SuperFW installations and saves continue to
+work. The following files are usually created:
 
  - .superfw/settings.txt: User settings, loaded on startup.
  - .superfw/ui-settings.txt: UI settings, loaded on startup.
@@ -148,7 +150,11 @@ constraints:
 Licenses
 --------
 
-Most of SuperFW was written by davidgf and is published under GPL license.
+SuperR7-specific work is copyright (C) 2026 Danny Nunez. SuperR7 is based on
+SuperFW, primarily written by David Guillen Fandos (`davidgf`), whose existing
+copyright and attribution are retained. The firmware is distributed under the
+GNU General Public License, version 3 or later. See [LICENSE](LICENSE) and
+[CREDITS.md](CREDITS.md).
 Some components use third party code, such as: nanoprintf (public domain),
 heapsort (3-BSD), fatfs (1-BSD-like) and apultra/upkr (only used at
 build-time). Some linkerscript/crt0 code was adapted from AntonioND's work

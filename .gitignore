@@ -7,3 +7,8 @@
 *.gcno
 *.info
 *.i
+__pycache__/
+*.py[cod]
+artifacts/
+src/menu_messages.h
+src/messages_data.h
