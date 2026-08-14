@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Danny Nunez
+ * Copyright (C) 2026 Danny Nunez (dnunezx)
  * Emulator-only harness for the SuperR7 in-game menu renderer.
  */
 

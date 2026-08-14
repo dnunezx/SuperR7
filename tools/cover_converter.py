@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
-"""Convert desktop artwork into framebuffer-ready SuperFW cover files."""
+# Copyright (C) 2026 Danny Nunez (dnunezx)
+"""Convert desktop artwork into version 3 76-by-76 SuperR7 covers."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 import sys
-from typing import Iterable
 
-from PIL import Image, ImageColor, ImageOps
+from PIL import Image, ImageOps
 
 try:
+    from .cover_converter_v2 import (
+        DITHER_MODES,
+        RESAMPLE,
+        add_image_options,
+        iter_images,
+    )
     from .sfcov import (
         Cover,
         CoverFormatError,
@@ -23,6 +29,12 @@ try:
         rgb888_to_bgr555,
     )
 except ImportError:  # Direct execution: python tools/cover_converter.py
+    from cover_converter_v2 import (  # type: ignore
+        DITHER_MODES,
+        RESAMPLE,
+        add_image_options,
+        iter_images,
+    )
     from sfcov import (  # type: ignore
         Cover,
         CoverFormatError,
@@ -36,31 +48,11 @@ except ImportError:  # Direct execution: python tools/cover_converter.py
     )
 
 
-SUPPORTED_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".webp"}
-RESAMPLE = Image.Resampling.LANCZOS
-DITHER_MODES = {
-    "none": Image.Dither.NONE,
-    "floyd-steinberg": Image.Dither.FLOYDSTEINBERG,
-}
-
-
-def parse_background(value: str) -> tuple[int, int, int]:
-    try:
-        color = ImageColor.getrgb(value)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(str(exc)) from exc
-    if len(color) == 4:
-        return color[:3]
-    return color
-
-
 def prepare_image(
     image: Image.Image,
     mode: str = "cover",
     background: tuple[int, int, int] = (0, 0, 0),
 ) -> Image.Image:
-    """Flatten and resize an input image to the fixed cover canvas."""
-
     rgba = image.convert("RGBA")
     flattened = Image.new("RGBA", rgba.size, background + (255,))
     flattened.alpha_composite(rgba)
@@ -84,8 +76,6 @@ def image_to_cover(
     background: tuple[int, int, int] = (0, 0, 0),
     dither: str = "floyd-steinberg",
 ) -> Cover:
-    """Prepare, quantize, compact, and encode an image as a Cover object."""
-
     if dither not in DITHER_MODES:
         raise ValueError(f"unsupported dither mode: {dither}")
 
@@ -97,10 +87,6 @@ def image_to_cover(
     )
     source_palette = quantized.getpalette()
     source_pixels = quantized.tobytes()
-
-    # Pillow may leave unused palette slots and distinct 24-bit colors can
-    # collapse to the same BGR555 value. Compact both cases so the file carries
-    # only colors that the GBA can actually distinguish.
     source_to_compact: dict[int, int] = {}
     color_to_compact: dict[int, int] = {}
     compact_palette: list[int] = []
@@ -124,8 +110,6 @@ def image_to_cover(
 
 
 def cover_to_image(cover: Cover) -> Image.Image:
-    """Render a cover using its final 15-bit GBA colors."""
-
     cover.validate()
     palette: list[int] = []
     for color in cover.palette:
@@ -152,33 +136,19 @@ def convert_file(
     source_path = Path(source)
     output_path = Path(output)
     preview_path = Path(preview) if preview is not None else None
-
     for destination in (output_path, preview_path):
         if destination is not None and destination.exists() and not overwrite:
             raise FileExistsError(f"output already exists: {destination}")
 
     with Image.open(source_path) as image:
         cover = image_to_cover(
-            image,
-            mode=mode,
-            background=background,
-            dither=dither,
+            image, mode=mode, background=background, dither=dither
         )
-
     cover.write(output_path)
     if preview_path is not None:
         preview_path.parent.mkdir(parents=True, exist_ok=True)
         cover_to_image(cover).save(preview_path, format="PNG")
     return cover
-
-
-def iter_images(input_dir: Path, recursive: bool) -> Iterable[Path]:
-    candidates = input_dir.rglob("*") if recursive else input_dir.glob("*")
-    return sorted(
-        path
-        for path in candidates
-        if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
-    )
 
 
 def batch_convert(
@@ -198,16 +168,14 @@ def batch_convert(
     if not source_root.is_dir():
         raise NotADirectoryError(f"input directory does not exist: {source_root}")
 
-    sources = list(iter_images(source_root, recursive))
     plans: list[tuple[Path, Path, Path | None]] = []
     seen: set[Path] = set()
-    for source in sources:
+    for source in iter_images(source_root, recursive):
         relative = source.relative_to(source_root)
-        relative_output = relative.with_suffix(".sfcov")
-        output = output_root / relative_output
+        output = output_root / relative.with_suffix(".sfcov")
         if output in seen:
             raise FileExistsError(
-                f"multiple input images map to the same cover: {relative_output}"
+                f"multiple input images map to the same cover: {output.name}"
             )
         seen.add(output)
         preview = (
@@ -235,59 +203,33 @@ def batch_convert(
     return outputs
 
 
-def add_image_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--mode",
-        choices=("cover", "contain"),
-        default="cover",
-        help="center-crop to fill (cover) or letterbox to fit (contain)",
-    )
-    parser.add_argument(
-        "--background",
-        type=parse_background,
-        default=(0, 0, 0),
-        metavar="COLOR",
-        help="background used for transparency/letterboxing (default: black)",
-    )
-    parser.add_argument(
-        "--dither",
-        choices=tuple(DITHER_MODES),
-        default="floyd-steinberg",
-        help="color-reduction dithering mode",
-    )
-    parser.add_argument(
-        "--overwrite", action="store_true", help="replace existing output files"
-    )
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Convert artwork to the SuperFW .sfcov format"
+        description="Convert artwork to the SuperR7 v3 76x76 .sfcov format"
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    commands = parser.add_subparsers(dest="command", required=True)
 
-    convert = subparsers.add_parser("convert", help="convert one image")
+    convert = commands.add_parser("convert", help="convert one image")
     convert.add_argument("input", type=Path)
     convert.add_argument("output", type=Path)
-    convert.add_argument("--preview", type=Path, help="write a GBA-color PNG preview")
+    convert.add_argument("--preview", type=Path)
     add_image_options(convert)
 
-    batch = subparsers.add_parser("batch", help="convert a directory of images")
+    batch = commands.add_parser("batch", help="convert a directory")
     batch.add_argument("input_dir", type=Path)
     batch.add_argument("output_dir", type=Path)
     batch.add_argument("--preview-dir", type=Path)
     batch.add_argument("--recursive", action="store_true")
     add_image_options(batch)
 
-    inspect = subparsers.add_parser("inspect", help="validate and describe a cover")
+    inspect = commands.add_parser("inspect", help="validate a v3 cover")
     inspect.add_argument("input", type=Path)
-    inspect.add_argument("--preview", type=Path, help="write a decoded PNG preview")
+    inspect.add_argument("--preview", type=Path)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
+    args = build_parser().parse_args(argv)
     try:
         if args.command == "convert":
             cover = convert_file(

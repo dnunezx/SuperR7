@@ -270,6 +270,8 @@ ingame_menu_entry:
 
   // Backup LCD regs
   ldrh r2, [r0, #REG_DISPCNT];  strh r2, [r1], #2
+  orr r2, $0x80                         // Keep the game framebuffer hidden during handoff
+  strh r2, [r0, #REG_DISPCNT]
   ldrh r2, [r0, #REG_DISPSTAT]; strh r2, [r1], #2
   ldrh r2, [r0, #REG_BG0CNT];   strh r2, [r1], #2
   ldrh r2, [r0, #REG_BG1CNT];   strh r2, [r1], #2
@@ -377,6 +379,12 @@ ingame_menu_entry:
   ldrne r1, =ingame_menu_blocked            // Otherwise, display warning menu
   mov lr, pc
   bx r1
+
+  // Keep the menu framebuffer hidden while the game state is restored.
+  mov r0, $0x04000000
+  ldrh r2, [r0, #REG_DISPCNT]
+  orr r2, $0x80
+  strh r2, [r0, #REG_DISPCNT]
 
   mov r0, $0x5     // Ensure we remain in R/W mode
   bl set_cpld_mode

@@ -1,4 +1,5 @@
-"""Read and write the version 2 SuperFW cover format."""
+# Copyright (C) 2026 Danny Nunez (dnunezx)
+"""Read and write the version 3 76-by-76 SuperR7 cover format."""
 
 from __future__ import annotations
 
@@ -7,12 +8,17 @@ from pathlib import Path
 import struct
 import zlib
 
+try:
+    from .sfcov_v2 import bgr555_to_rgb888, fallback_filename, rgb888_to_bgr555
+except ImportError:  # Direct execution support.
+    from sfcov_v2 import bgr555_to_rgb888, fallback_filename, rgb888_to_bgr555  # type: ignore
+
 
 MAGIC = b"SFCV"
-VERSION = 2
+VERSION = 3
 HEADER_SIZE = 32
-WIDTH = 72
-HEIGHT = 72
+WIDTH = 76
+HEIGHT = 76
 PIXEL_COUNT = WIDTH * HEIGHT
 PALETTE_BASE = 20
 MAX_PALETTE_COLORS = 220
@@ -23,48 +29,12 @@ assert HEADER.size == HEADER_SIZE
 
 
 class CoverFormatError(ValueError):
-    """Raised when a cover does not conform to the version 2 format."""
-
-
-def rgb888_to_bgr555(red: int, green: int, blue: int) -> int:
-    """Convert 8-bit RGB channels to the GBA's 15-bit color format."""
-
-    for channel in (red, green, blue):
-        if not 0 <= channel <= 255:
-            raise ValueError("RGB channels must be between 0 and 255")
-    return (red >> 3) | ((green >> 3) << 5) | ((blue >> 3) << 10)
-
-
-def bgr555_to_rgb888(color: int) -> tuple[int, int, int]:
-    """Expand a GBA BGR555 color to display-friendly 8-bit RGB channels."""
-
-    if not 0 <= color <= 0x7FFF:
-        raise ValueError("BGR555 color must fit in 15 bits")
-
-    def expand(value: int) -> int:
-        return (value << 3) | (value >> 2)
-
-    return (
-        expand(color & 0x1F),
-        expand((color >> 5) & 0x1F),
-        expand((color >> 10) & 0x1F),
-    )
-
-
-def fallback_filename(rom_name: str) -> str:
-    """Return the firmware's 8.3-safe fallback cover filename."""
-
-    basename = rom_name.replace("\\", "/").rsplit("/", 1)[-1]
-    dot = basename.rfind(".")
-    if dot <= 0:
-        raise ValueError("ROM filename must include an extension")
-    checksum = zlib.crc32(basename[:dot].encode("utf-8")) & 0xFFFFFFFF
-    return f"{checksum:08X}.cov"
+    """Raised when a cover does not conform to the version 3 format."""
 
 
 @dataclass(frozen=True)
 class Cover:
-    """A validated, framebuffer-ready cover."""
+    """A validated, framebuffer-ready 76-by-76 cover."""
 
     palette: tuple[int, ...]
     pixels: bytes

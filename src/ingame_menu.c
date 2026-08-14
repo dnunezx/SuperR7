@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2024 David Guillen Fandos <david@davidgf.net>
- * Copyright (C) 2026 Danny Nunez
+ * Copyright (C) 2026 Danny Nunez (dnunezx)
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -576,6 +576,45 @@ static void draw_card(uint8_t *fb, unsigned left, unsigned top,
     fill_rect(fb, left + 1, top + 1, 3, height - 2, ACCENT_COLOR);
 }
 
+static void draw_tech_frame(uint8_t *fb) {
+  unsigned bottom = SCREEN_HEIGHT - 3;
+  fill_rect(fb, 1, 18, 1, 34, STRIPE2_COLOR);
+  fill_rect(fb, 1, 61, 1, 24, STRIPE_COLOR);
+  fill_rect(fb, 1, 99, 1, 43, STRIPE2_COLOR);
+  fill_rect(fb, 238, 12, 1, 42, STRIPE_COLOR);
+  fill_rect(fb, 238, 69, 1, 65, STRIPE2_COLOR);
+  fill_rect(fb, 0, 18, 3, 2, ACCENT2_COLOR);
+  fill_rect(fb, 237, 69, 3, 2, ACCENT2_COLOR);
+  fill_rect(fb, 4, 3, 82, 1, STRIPE2_COLOR);
+  fill_rect(fb, 85, 3, 1, 9, STRIPE2_COLOR);
+  fill_rect(fb, 85, 11, 42, 1, STRIPE_COLOR);
+  fill_rect(fb, 152, 3, 62, 1, STRIPE_COLOR);
+  fill_rect(fb, 214, 3, 1, 13, STRIPE_COLOR);
+  fill_rect(fb, 214, 15, 20, 1, STRIPE2_COLOR);
+  fill_rect(fb, 5, 10, 1, 35, STRIPE_COLOR);
+  fill_rect(fb, 5, 44, 13, 1, STRIPE_COLOR);
+  fill_rect(fb, 17, 44, 1, 18, STRIPE2_COLOR);
+  fill_rect(fb, 222, 24, 1, 32, STRIPE_COLOR);
+  fill_rect(fb, 222, 55, 12, 1, STRIPE2_COLOR);
+  fill_rect(fb, 233, 55, 1, 27, STRIPE2_COLOR);
+  fill_rect(fb, 6, bottom - 12, 1, 10, STRIPE2_COLOR);
+  fill_rect(fb, 6, bottom - 12, 18, 1, STRIPE2_COLOR);
+  fill_rect(fb, 23, bottom - 12, 1, 7, STRIPE_COLOR);
+  fill_rect(fb, 23, bottom - 6, 58, 1, STRIPE_COLOR);
+  fill_rect(fb, 81, bottom - 6, 1, 4, STRIPE_COLOR);
+  fill_rect(fb, 81, bottom - 3, 50, 1, STRIPE2_COLOR);
+  fill_rect(fb, 151, bottom - 3, 45, 1, STRIPE_COLOR);
+  fill_rect(fb, 195, bottom - 10, 1, 8, STRIPE_COLOR);
+  fill_rect(fb, 195, bottom - 10, 38, 1, STRIPE2_COLOR);
+  fill_rect(fb, 232, bottom - 25, 1, 16, STRIPE2_COLOR);
+  for (unsigned x = 11; x < 75; x += 9)
+    fill_rect(fb, x, 7, 4, 2, ACCENT2_COLOR);
+  for (unsigned x = 163; x < 224; x += 10)
+    fill_rect(fb, x, bottom - 7, 4, 2, ACCENT2_COLOR);
+  set_pixel(fb, 17, 62, ACCENT2_COLOR);
+  set_pixel(fb, 233, 82, ACCENT2_COLOR);
+}
+
 static void draw_background(uint8_t *fb) {
   fill_rect(fb, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BG_COLOR);
   switch (ingame_menu_wallpaper % UiWallpaperCount) {
@@ -600,6 +639,9 @@ static void draw_background(uint8_t *fb) {
       fill_rect(fb, bend, y + 6, 30, 1, STRIPE2_COLOR);
       set_pixel(fb, bend + 30, y + 6, ACCENT2_COLOR);
     }
+    break;
+  case UiWallpaperTechFrame:
+    draw_tech_frame(fb);
     break;
   default:
     break;
@@ -657,18 +699,14 @@ static void draw_screen_shell(uint8_t *fb) {
   draw_background(fb);
   draw_card(fb, 3, 3, 234, 18, false);
   fill_rect(fb, 4, 4, 4, 16, ACCENT_COLOR);
-  draw_text_center("SuperR7", fb, SCREEN_WIDTH / 2, 7, TEXT_COLOR);
-  fill_rect(fb, 3, 145, 234, 12, DEEP_COLOR);
-  fill_rect(fb, 3, 145, 234, 1, ACCENT2_COLOR);
-  draw_text_center("A  SELECT     B  BACK", fb, SCREEN_WIDTH / 2, 147,
-                   UI_COLOR(UiV2DockText));
+  draw_text_center("SuperR7", fb, SCREEN_WIDTH / 2, 4, TEXT_COLOR);
 }
 
 static void draw_menu_row(uint8_t *fb, unsigned row, unsigned top,
                           const char *label, bool enabled) {
   bool selected = row == copt;
   draw_card(fb, 8, top, 224, 16, selected);
-  draw_text_ovf(label, fb, 16, top + 4, 208,
+  draw_text_ovf(label, fb, 16, top, 208,
                 enabled ? (selected ? WHITE_COLOR : TEXT_COLOR) :
                           DISABLED_COLOR);
 }
@@ -685,9 +723,9 @@ void draw_popup(uint8_t *fb) {
     draw_card(fb, 28, topy + 36, 82, 18, popup.opt == 1);
     draw_card(fb, 130, topy + 36, 82, 18, popup.opt == 0);
     draw_text_center(msgs[ingame_menu_lang][IMENU_QC1_YES], fb, 69,
-                     topy + 41, popup.opt == 1 ? WHITE_COLOR : TEXT_COLOR);
+                     topy + 39, popup.opt == 1 ? WHITE_COLOR : TEXT_COLOR);
     draw_text_center(msgs[ingame_menu_lang][IMENU_QC0_NO], fb, 171,
-                     topy + 41, popup.opt == 0 ? WHITE_COLOR : TEXT_COLOR);
+                     topy + 39, popup.opt == 0 ? WHITE_COLOR : TEXT_COLOR);
   }
 }
 
@@ -721,14 +759,14 @@ void draw_rtc_menu(uint8_t *fb, unsigned framen) {
   char tyear[5] = {'2', '0', '0' + rtc_date.year/10, '0' + rtc_date.year%10, 0};
 
   draw_card(fb, 8, 30, 224, 44, copt < 5);
-  draw_text(tyear, fb,  54, 48, copt == 0 ? WHITE_COLOR : TEXT_COLOR);
-  draw_text("-",   fb,  86, 48, TEXT_COLOR);
-  draw_text(tmont, fb,  95, 48, copt == 1 ? WHITE_COLOR : TEXT_COLOR);
-  draw_text("-",   fb, 111, 48, TEXT_COLOR);
-  draw_text(tdays, fb, 120, 48, copt == 2 ? WHITE_COLOR : TEXT_COLOR);
-  draw_text(thour, fb, 148, 48, copt == 3 ? WHITE_COLOR : TEXT_COLOR);
-  draw_text(":",   fb, 165, 48, TEXT_COLOR);
-  draw_text(tmins, fb, 170, 48, copt == 4 ? WHITE_COLOR : TEXT_COLOR);
+  draw_text(tyear, fb,  54, 44, copt == 0 ? WHITE_COLOR : TEXT_COLOR);
+  draw_text("-",   fb,  86, 44, TEXT_COLOR);
+  draw_text(tmont, fb,  95, 44, copt == 1 ? WHITE_COLOR : TEXT_COLOR);
+  draw_text("-",   fb, 111, 44, TEXT_COLOR);
+  draw_text(tdays, fb, 120, 44, copt == 2 ? WHITE_COLOR : TEXT_COLOR);
+  draw_text(thour, fb, 148, 44, copt == 3 ? WHITE_COLOR : TEXT_COLOR);
+  draw_text(":",   fb, 165, 44, TEXT_COLOR);
+  draw_text(tmins, fb, 170, 44, copt == 4 ? WHITE_COLOR : TEXT_COLOR);
 
   if (copt < 5) {
     const uint8_t cox[] = {
@@ -744,12 +782,12 @@ void draw_rtc_menu(uint8_t *fb, unsigned framen) {
     msgs[ingame_menu_lang][IMENU_RTCSPD],
     msgs[ingame_menu_lang][rtc_speed ? (IMENU_SPD0 + rtc_speed - 1) : IMENU_FRZRTC]);
   draw_card(fb, 8, 82, 224, 20, copt == 5);
-  draw_text_center(tmp, fb, SCREEN_WIDTH/2, 88,
+  draw_text_center(tmp, fb, SCREEN_WIDTH/2, 84,
                    copt == 5 ? WHITE_COLOR : TEXT_COLOR);
 
   draw_card(fb, 8, 112, 224, 22, copt == 6);
   draw_text_center(msgs[ingame_menu_lang][IMENU_UPDAT_RTC], fb,
-                   SCREEN_WIDTH/2, 119,
+                   SCREEN_WIDTH/2, 115,
                    copt == 6 ? WHITE_COLOR : TEXT_COLOR);
 }
 
@@ -768,13 +806,13 @@ void draw_cheats_menu(uint8_t *fb, unsigned framen) {
       bool selected = copt == i;
       unsigned top = 31 + 21 * numdisp;
       draw_card(fb, 8, top, 224, 17, selected);
-      draw_text(e->enabled ? "☑" : "☐", fb, 14, top + 4,
+      draw_text(e->enabled ? "☑" : "☐", fb, 14, top,
                 selected ? WHITE_COLOR : ACCENT_COLOR);
       if (copt == i)
-        draw_text_ovf_rotate((char*)e->data, fb, 30, top + 4, 194,
+        draw_text_ovf_rotate((char*)e->data, fb, 30, top, 194,
                              WHITE_COLOR);
       else
-        draw_text_ovf((char*)e->data, fb, 30, top + 4, 194,
+        draw_text_ovf((char*)e->data, fb, 30, top, 194,
                       TEXT_COLOR);
       numdisp++;
     }
@@ -831,7 +869,7 @@ void draw_states_menu(uint8_t *fb, unsigned framen) {
 
   if (state_slot < 0) {
     npf_snprintf(tmp, sizeof(tmp), msgs[ingame_menu_lang][IMENU_SSTATE_PN], -state_slot);
-    draw_text_center(tmp,  fb, SCREEN_WIDTH / 2, 33, WHITE_COLOR);
+    draw_text_center(tmp,  fb, SCREEN_WIDTH / 2, 31, WHITE_COLOR);
 
     if (makepers >= 0) {
       copt = copt & 1;
@@ -846,7 +884,7 @@ void draw_states_menu(uint8_t *fb, unsigned framen) {
     }
   } else {
     npf_snprintf(tmp, sizeof(tmp), msgs[ingame_menu_lang][IMENU_SSTATE_QN], state_slot + 1);
-    draw_text_center(tmp,  fb, SCREEN_WIDTH / 2, 33, WHITE_COLOR);
+    draw_text_center(tmp,  fb, SCREEN_WIDTH / 2, 31, WHITE_COLOR);
 
     draw_menu_row(fb, 0, 91, msgs[ingame_menu_lang][IMENU_SSTATEQ0_SAVE], true);
     draw_menu_row(fb, 1, 108, msgs[ingame_menu_lang][IMENU_SSTATEQ1_LOAD],
@@ -1224,7 +1262,7 @@ const t_menu_def menudata [] = {
 
 void setup_video_frame() {
   // Setup video mode
-  REG_DISPCNT = 0x0404;   // Mode 4, BG2
+  REG_DISPCNT = 0x0484;   // Mode 4, BG2, forced blank until the first frame is ready
   REG_BGxCNT(2) = 0x80;   // 256 color mode
   REG_BLDCNT = 0;
   REG_BLDALPHA = 0;
@@ -1271,12 +1309,12 @@ void ingame_menu_blocked(uint32_t *use_cheats_hook) {
   // Show an user message
   draw_card(fb, 8, 119, 224, 22, true);
   draw_text_center(msgs[ingame_menu_lang][IMENU_SAVING_BLOCKED], fb,
-                   SCREEN_WIDTH / 2, 126, WHITE_COLOR);
+                   SCREEN_WIDTH / 2, 124, WHITE_COLOR);
 
   // Wait for VBlank (with some leeway)
   while ((REG_VCOUNT & ~7) != 160);
   // Display frame 1, just rendered
-  REG_DISPCNT = (REG_DISPCNT | 0x10);
+  REG_DISPCNT = (REG_DISPCNT | 0x10) & ~0x80;
 
   // Wait for the user to press any button
   uint16_t pk = 0xFFFF;
@@ -1386,7 +1424,7 @@ void ingame_menu_loop(uint32_t *use_cheats_hook) {
     // Wait for VBlank (with some leeway)
     while ((REG_VCOUNT & ~7) != 160);
     // Flip frame
-    REG_DISPCNT = (REG_DISPCNT & ~0x10) | (framen << 4);
+    REG_DISPCNT = ((REG_DISPCNT & ~0x10) | (framen << 4)) & ~0x80;
   }
 
   // Unmount the device, ensure everything is in order

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Danny Nunez
+ * Copyright (C) 2026 Danny Nunez (dnunezx)
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -117,6 +117,45 @@ static void draw_box(volatile uint8_t *frame, unsigned left, unsigned top,
   fill_rect(frame, left + 2, top + 2, width - 4, height - 4, fill);
 }
 
+static void draw_tech_frame(volatile uint8_t *frame, unsigned height) {
+  unsigned bottom = height - 3;
+  fill_rect(frame, 1, 18, 1, 34, UiV2StripeLight);
+  fill_rect(frame, 1, 61, 1, 24, UiV2Stripe);
+  fill_rect(frame, 1, 99, 1, 27, UiV2StripeLight);
+  fill_rect(frame, 238, 12, 1, 42, UiV2Stripe);
+  fill_rect(frame, 238, 69, 1, 47, UiV2StripeLight);
+  fill_rect(frame, 0, 18, 3, 2, UiV2AccentDark);
+  fill_rect(frame, 237, 69, 3, 2, UiV2AccentDark);
+  fill_rect(frame, 4, 3, 82, 1, UiV2StripeLight);
+  fill_rect(frame, 85, 3, 1, 9, UiV2StripeLight);
+  fill_rect(frame, 85, 11, 42, 1, UiV2Stripe);
+  fill_rect(frame, 152, 3, 62, 1, UiV2Stripe);
+  fill_rect(frame, 214, 3, 1, 13, UiV2Stripe);
+  fill_rect(frame, 214, 15, 20, 1, UiV2StripeLight);
+  fill_rect(frame, 5, 10, 1, 35, UiV2Stripe);
+  fill_rect(frame, 5, 44, 13, 1, UiV2Stripe);
+  fill_rect(frame, 17, 44, 1, 18, UiV2StripeLight);
+  fill_rect(frame, 222, 24, 1, 32, UiV2Stripe);
+  fill_rect(frame, 222, 55, 12, 1, UiV2StripeLight);
+  fill_rect(frame, 233, 55, 1, 27, UiV2StripeLight);
+  fill_rect(frame, 6, bottom - 12, 1, 10, UiV2StripeLight);
+  fill_rect(frame, 6, bottom - 12, 18, 1, UiV2StripeLight);
+  fill_rect(frame, 23, bottom - 12, 1, 7, UiV2Stripe);
+  fill_rect(frame, 23, bottom - 6, 58, 1, UiV2Stripe);
+  fill_rect(frame, 81, bottom - 6, 1, 4, UiV2Stripe);
+  fill_rect(frame, 81, bottom - 3, 50, 1, UiV2StripeLight);
+  fill_rect(frame, 151, bottom - 3, 45, 1, UiV2Stripe);
+  fill_rect(frame, 195, bottom - 10, 1, 8, UiV2Stripe);
+  fill_rect(frame, 195, bottom - 10, 38, 1, UiV2StripeLight);
+  fill_rect(frame, 232, bottom - 25, 1, 16, UiV2StripeLight);
+  for (unsigned x = 11; x < 75; x += 9)
+    fill_rect(frame, x, 7, 4, 2, UiV2AccentDark);
+  for (unsigned x = 163; x < 224; x += 10)
+    fill_rect(frame, x, bottom - 7, 4, 2, UiV2AccentDark);
+  set_pixel(frame, 17, 62, UiV2AccentDark);
+  set_pixel(frame, 233, 82, UiV2AccentDark);
+}
+
 static void draw_background(volatile uint8_t *frame) {
   fill_rect(frame, 0, 0, SCREEN_WIDTH, UI_BROWSER_V2_DOCK_TOP,
             UiV2Background);
@@ -142,6 +181,9 @@ static void draw_background(volatile uint8_t *frame) {
       fill_rect(frame, bend, y + 6, 30, 1, UiV2StripeLight);
       set_pixel(frame, bend + 30, y + 6, UiV2AccentDark);
     }
+    break;
+  case UiWallpaperTechFrame:
+    draw_tech_frame(frame, UI_BROWSER_V2_DOCK_TOP);
     break;
   default:
     break;
@@ -237,10 +279,10 @@ static void draw_row(volatile uint8_t *frame,
 static void draw_rows(volatile uint8_t *frame,
                       const t_ui_browser_v2_model *model) {
   if (model->layout == UiBrowserV2LayoutLaunch) {
-    static const uint8_t tops[] = {4, 27, 62, 93};
-    static const uint8_t heights[] = {17, 29, 25, 25};
+    static const uint8_t tops[] = {4, 27, 55, 83, 111};
+    static const uint8_t heights[] = {17, 23, 23, 23, 23};
     draw_row(frame, model, 0, 3, tops[0], 234, heights[0]);
-    for (unsigned i = 1; i < model->entry_count && i < 4; i++)
+    for (unsigned i = 1; i < model->entry_count && i < 5; i++)
       draw_row(frame, model, i, 85, tops[i], 152, heights[i]);
     return;
   }
@@ -442,12 +484,6 @@ void ui_browser_v2_render_loading(volatile uint8_t *frame, const char *title,
   draw_text_clipped("PLEASE WAIT", frame, right_center - width / 2, 101,
                     width, UiV2Muted);
 
-  if (cover_state == CoverReady && cover_pixels) {
-    unsigned scan_y = UI_BROWSER_V2_COVER_TOP +
-                      (COVER_HEIGHT - 1) * percent / 100;
-    fill_rect(frame, UI_BROWSER_V2_COVER_LEFT, scan_y, COVER_WIDTH, 1,
-              UiV2GlowEdge);
-  }
   draw_footer(frame, "LOADING", NULL);
 }
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2024 David Guillen Fandos <david@davidgf.net>
- * Copyright (C) 2026 Danny Nunez
+ * Copyright (C) 2026 Danny Nunez (dnunezx)
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -23,6 +23,7 @@
 #include "cover.h"
 #include "superr7.h"
 #ifdef UI_BROWSER_V2
+#include "menu_nav.h"
 #include "ui_browser_v2.h"
 #endif
 #include "gbahw.h"
@@ -88,9 +89,11 @@ enum {
 #ifdef COVER_ART_DEMO
 #define BROWSER_MAXFN_CNT             8
 #define RECENT_MAXFN_CNT              4
+#define FAVORITES_MAXFN_CNT           4
 #else
 #define BROWSER_MAXFN_CNT     (16*1024)
 #define RECENT_MAXFN_CNT          (200)
+#define FAVORITES_MAXFN_CNT       (200)
 #endif
 #ifdef UI_BROWSER_V2
 #define BROWSER_ROWS UI_BROWSER_V2_ROWS
@@ -99,6 +102,7 @@ enum {
 #endif
 #ifdef UI_BROWSER_V2
 #define RECENT_ROWS UI_BROWSER_V2_ROWS
+#define FAVORITES_ROWS UI_BROWSER_V2_ROWS
 #else
 #define RECENT_ROWS                  9
 #endif
@@ -142,6 +146,24 @@ enum {
   UiSetMAX   = 4,
   UiSetCNT   = 5,
 };
+
+#ifdef UI_BROWSER_V2
+enum {
+  InfoSystem = 0,
+  InfoMaintainer,
+  InfoBasedOn,
+  InfoBuild,
+  InfoFlashDevice,
+  InfoFlashCapacity,
+  InfoUpdater,
+  InfoPatchDatabase,
+  InfoPatchCount,
+  InfoSDType,
+  InfoSDCapacity,
+  InfoSDCardId,
+  InfoCNT,
+};
+#endif
 
 enum {
 #ifdef UI_BROWSER_V2
@@ -224,11 +246,14 @@ enum {
 
 enum {
   GBALoadButt    = 0,
+#ifdef UI_BROWSER_V2
+  GBAFavoriteButt = 1,
+  GBAOptionsButt = 2,
+  GBADetailsButt = 3,
+  GBAInfoCNT     = 4,
+#else
   GBAOptionsButt = 1,
   GBADetailsButt = 2,
-#ifdef UI_BROWSER_V2
-  GBAInfoCNT     = 3,
-#else
   GBAInfoCNT     = 1,
 #endif
 
@@ -325,6 +350,15 @@ static struct {
 
   unsigned anim_state;            // Animation (text rotation) status.
 
+#ifdef UI_BROWSER_V2
+  // Favorite ROMs state
+  struct {
+    int selector;                 // Pointed favorite offset
+    int seloff;                   // Entry at the top of the list
+    int maxentries;               // Total favorite count
+  } favorites;
+#endif
+
   // Recent ROMs state
   struct {
     int selector;                 // Pointed file offset
@@ -375,7 +409,10 @@ static struct {
 
   // Info/About menu
   struct {
-    int selector;                 // Render panel
+    int selector;                 // Selected information row / legacy panel
+#ifdef UI_BROWSER_V2
+    int seloff;                   // First visible information row
+#endif
     char tstr[64];                // Temp message render
   } info;
 } smenu;
@@ -474,6 +511,9 @@ typedef struct {
   uint8_t scratch[scratch_mem_size];
   t_centry *fileorder[BROWSER_MAXFN_CNT];
   t_centry fentries[BROWSER_MAXFN_CNT];
+#ifdef UI_BROWSER_V2
+  t_rentry faventries[FAVORITES_MAXFN_CNT];
+#endif
   t_rentry rentries[RECENT_MAXFN_CNT];
   t_reg_entry_max nordata;
 } t_sdram_state;
@@ -1085,10 +1125,17 @@ static bool delete_recent_flush(unsigned entry_num) {
               (smenu.recent.maxentries - (entry_num + 1)) * sizeof(sdr_state->rentries[0]));
 
   smenu.recent.maxentries--;
-  smenu.recent.selector = MIN(smenu.recent.maxentries - 1, smenu.recent.selector);
-
-  if (!smenu.recent.maxentries)
+  if (smenu.recent.maxentries) {
+    smenu.recent.selector = MIN(smenu.recent.maxentries - 1,
+                                smenu.recent.selector);
+#ifdef UI_BROWSER_V2
+    smenu.recent.seloff = (smenu.recent.selector / RECENT_ROWS) * RECENT_ROWS;
+#endif
+  } else {
+    smenu.recent.selector = 0;
+    smenu.recent.seloff = 0;
     smenu.menu_tab = MENUTAB_ROMBROWSE;
+  }
 
   return recent_flush();
 }
@@ -1142,6 +1189,188 @@ static void recent_reload() {
 
   f_close(&fi);
 }
+
+#ifdef UI_BROWSER_V2
+static int favorite_find(const char *fn) {
+  for (int i = 0; i < smenu.favorites.maxentries; i++)
+    if (!strcmp(sdr_state->faventries[i].fpath, fn))
+      return i;
+  return -1;
+}
+
+static void favorite_copy_path(unsigned entry_num, char *path) {
+  /* FatFs must never receive a path pointer into cartridge SDRAM. */
+  dma_memcpy16(path, sdr_state->faventries[entry_num].fpath,
+               MAX_FN_LEN / 2);
+  path[MAX_FN_LEN - 1] = 0;
+}
+
+NOINLINE static bool favorites_flush() {
+#ifdef COVER_ART_DEMO
+  return true;
+#else
+  FIL fo;
+  if (FR_OK != f_open(&fo, FAVORITES_FILEPATH,
+                      FA_WRITE | FA_CREATE_ALWAYS))
+    return false;
+
+  unsigned coff = 0;
+  char tmpbuf[1024];
+  for (int i = 0; i < smenu.favorites.maxentries; i++) {
+    char path[MAX_FN_LEN];
+    favorite_copy_path(i, path);
+    unsigned fnlen = strlen(path);
+    memcpy(&tmpbuf[coff], path, fnlen);
+    coff += fnlen;
+    tmpbuf[coff++] = '\n';
+
+    if (coff >= 512) {
+      UINT wrbytes;
+      if (FR_OK != f_write(&fo, tmpbuf, 512, &wrbytes) ||
+          wrbytes != 512) {
+        f_close(&fo);
+        return false;
+      }
+      memmove(tmpbuf, &tmpbuf[512], coff - 512);
+      coff -= 512;
+    }
+  }
+
+  if (coff) {
+    UINT wrbytes;
+    if (FR_OK != f_write(&fo, tmpbuf, coff, &wrbytes) || wrbytes != coff) {
+      f_close(&fo);
+      return false;
+    }
+  }
+
+  return FR_OK == f_close(&fo);
+#endif
+}
+
+static bool favorite_add_flush(const char *fn) {
+  if (favorite_find(fn) >= 0)
+    return true;
+  unsigned fnlen = strlen(fn);
+  if (fnlen >= MAX_FN_LEN ||
+      smenu.favorites.maxentries >= FAVORITES_MAXFN_CNT)
+    return false;
+
+  t_rentry *entry = &sdr_state->faventries[smenu.favorites.maxentries];
+  entry->fname_offset = file_basename(fn) - fn;
+  dma_memcpy16(entry->fpath, fn, (fnlen + 2) / 2);
+  smenu.favorites.maxentries++;
+  if (favorites_flush())
+    return true;
+
+  smenu.favorites.maxentries--;
+  return false;
+}
+
+static bool favorite_delete_flush(unsigned entry_num) {
+  if (entry_num >= (unsigned)smenu.favorites.maxentries)
+    return false;
+
+  const int old_selector = smenu.favorites.selector;
+  const int old_seloff = smenu.favorites.seloff;
+  t_rentry removed;
+  dma_memcpy16(&removed, &sdr_state->faventries[entry_num],
+               sizeof(removed) / 2);
+
+  if (entry_num + 1 < (unsigned)smenu.favorites.maxentries)
+    memmove32(&sdr_state->faventries[entry_num],
+              &sdr_state->faventries[entry_num + 1],
+              (smenu.favorites.maxentries - entry_num - 1) *
+              sizeof(sdr_state->faventries[0]));
+  smenu.favorites.maxentries--;
+
+  if (smenu.favorites.maxentries) {
+    smenu.favorites.selector = MIN(smenu.favorites.selector,
+                                   smenu.favorites.maxentries - 1);
+    smenu.favorites.seloff = (smenu.favorites.selector / FAVORITES_ROWS) *
+                             FAVORITES_ROWS;
+  } else {
+    smenu.favorites.selector = 0;
+    smenu.favorites.seloff = 0;
+  }
+
+  if (favorites_flush())
+    return true;
+
+  if (entry_num < (unsigned)smenu.favorites.maxentries)
+    memmove32(&sdr_state->faventries[entry_num + 1],
+              &sdr_state->faventries[entry_num],
+              (smenu.favorites.maxentries - entry_num) *
+              sizeof(sdr_state->faventries[0]));
+  dma_memcpy16(&sdr_state->faventries[entry_num], &removed,
+               sizeof(removed) / 2);
+  smenu.favorites.maxentries++;
+  smenu.favorites.selector = old_selector;
+  smenu.favorites.seloff = old_seloff;
+  return false;
+}
+
+static void favorite_append_loaded(char *path, unsigned length) {
+  if (length && path[length - 1] == '\r')
+    path[--length] = 0;
+  if (!length || favorite_find(path) >= 0 ||
+      smenu.favorites.maxentries >= FAVORITES_MAXFN_CNT)
+    return;
+
+  t_rentry *entry = &sdr_state->faventries[smenu.favorites.maxentries++];
+  entry->fname_offset = file_basename(path) - path;
+  dma_memcpy16(entry->fpath, path, (length + 2) / 2);
+}
+
+static void favorites_reload() {
+  smenu.favorites.selector = 0;
+  smenu.favorites.seloff = 0;
+  smenu.favorites.maxentries = 0;
+#ifndef COVER_ART_DEMO
+  FIL fi;
+  if (FR_OK != f_open(&fi, FAVORITES_FILEPATH, FA_READ))
+    return;
+
+  char block[512];
+  char path[MAX_FN_LEN];
+  unsigned path_length = 0;
+  bool overlong = false;
+  while (smenu.favorites.maxentries < FAVORITES_MAXFN_CNT) {
+    UINT rdbytes;
+    if (FR_OK != f_read(&fi, block, sizeof(block), &rdbytes) || !rdbytes)
+      break;
+
+    for (unsigned i = 0; i < rdbytes; i++) {
+      if (block[i] == '\n') {
+        if (!overlong) {
+          path[path_length] = 0;
+          favorite_append_loaded(path, path_length);
+        }
+        path_length = 0;
+        overlong = false;
+      } else if (!overlong) {
+        if (path_length + 1 < sizeof(path))
+          path[path_length++] = block[i];
+        else
+          overlong = true;
+      }
+    }
+  }
+  if (!overlong && path_length) {
+    path[path_length] = 0;
+    favorite_append_loaded(path, path_length);
+  }
+  f_close(&fi);
+#endif
+}
+
+static unsigned favorite_pending_delete;
+
+static void favorite_delete_callback(bool confirm) {
+  if (confirm && !favorite_delete_flush(favorite_pending_delete))
+    spop.alert_msg = msgs[lang_id][MSG_ERR_GENERIC];
+}
+#endif
 
 void start_emu_game(const t_emu_loader *ldinfo, const char *fn, uint32_t fs) {
   // Load: Sav/Reset Save: Reboot/Disable
@@ -1272,7 +1501,12 @@ static void browser_reload_filter() {
 
   if (smenu.browser.selector >= fcount)
     smenu.browser.selector = fcount - 1;
+#ifdef UI_BROWSER_V2
+  smenu.browser.seloff = fcount ?
+    (smenu.browser.selector / BROWSER_ROWS) * BROWSER_ROWS : 0;
+#else
   smenu.browser.seloff = MAX(0, smenu.browser.selector - BROWSER_ROWS / 2);
+#endif
   smenu.browser.dispentries = fcount;
 }
 
@@ -2131,9 +2365,6 @@ void render_ui_settings(volatile uint8_t *frame) {
 }
 
 void render_info(volatile uint8_t *frame) {
-  uint32_t vmaj = VERSION_WORD >> 16;
-  uint32_t vmin = VERSION_WORD & 0xFFFF;
-  uint32_t gitver = VERSION_SLUG_WORD;
   char tmp[64], tmp2[32];
 
   init_logo_palette(&MEM_PALETTE[1]);
@@ -2141,12 +2372,10 @@ void render_info(volatile uint8_t *frame) {
 
   switch (smenu.info.selector) {
   case 0:
-    draw_central_text(SUPERR7_PRODUCT_NAME " by " SUPERR7_MAINTAINER,
-                      frame, 120, 66);
-    draw_central_text("Based on SuperFW by davidgf", frame, 120, 84);
-    npf_snprintf(tmp, sizeof(tmp), "Version %lu.%lu (%08lx)", vmaj, vmin, gitver);
-    draw_central_text(tmp, frame, 120, 104);
-    draw_central_text(FW_FLAVOUR " variant", frame, 120, 123);
+    draw_central_text(SUPERR7_PRODUCT_NAME, frame, 120, 66);
+    draw_central_text("Maintainer: " SUPERR7_MAINTAINER, frame, 120, 84);
+    draw_central_text("Based on: " SUPERR7_UPSTREAM_NAME, frame, 120, 104);
+    draw_central_text("Build:", frame, 120, 123);
     break;
   case 1:
     draw_central_text("Flash info", frame, 120, 70);
@@ -2371,16 +2600,19 @@ static void render_ui_phase5_popup(volatile uint8_t *frame) {
       model.cover_state = menu_cover_cache.state;
       model.cover_pixels = cover_cache_pixels(&menu_cover_cache);
       model.anim_state = spop.anim;
-      model.entry_count = 4;
+      model.entry_count = 5;
       model.selected_row = spop.selector + 1;
       model.entries[0].name = file_basename(info->romfn);
       model.entries[0].centered = true;
       model.entries[1].name = "Launch game";
       model.entries[1].centered = true;
-      model.entries[2].name = "Options";
-      model.entries[2].value = "AUTOMATIC";
-      model.entries[3].name = "Details";
-      model.entries[3].value = "INFO";
+      model.entries[2].name = favorite_find(info->romfn) >= 0 ?
+                              "Remove Favorite" : "Add to Favorites";
+      model.entries[2].centered = true;
+      model.entries[3].name = "Options";
+      model.entries[3].value = "AUTOMATIC";
+      model.entries[4].name = "Details";
+      model.entries[4].value = "INFO";
       model.footer_left = "A: SELECT";
       model.footer_right = "B: BACK";
     } else if (spop.submenu == GbaLoadPopLoadS) {
@@ -2410,7 +2642,7 @@ static void render_ui_phase5_popup(volatile uint8_t *frame) {
       model.entries[5].name = "Remember settings";
       model.entries[5].value = "A: SAVE";
       model.footer_left = "L/R: CHANGE";
-      model.footer_right = "B: QUICK";
+      model.footer_right = "B: BACK";
     } else if (spop.submenu == GbaLoadPopPatch) {
       model.wide = true;
       model.entry_count = 6;
@@ -2431,7 +2663,7 @@ static void render_ui_phase5_popup(volatile uint8_t *frame) {
       model.entries[5].name = "Build patches";
       model.entries[5].value = "A: BUILD";
       model.footer_left = "L/R: CHANGE";
-      model.footer_right = "B: QUICK";
+      model.footer_right = "B: BACK";
     } else {
       static const char *const patch_details[] = {
         "Built-in DB", "Patch engine", "Not needed", "Automatic",
@@ -2454,7 +2686,7 @@ static void render_ui_phase5_popup(volatile uint8_t *frame) {
       model.entries[5].value = msgs[lang_id][MSG_LOADER_ST0 +
                                (info->use_dsaving ? 0 : 1)];
       model.footer_left = "INFO";
-      model.footer_right = "B: QUICK";
+      model.footer_right = "B: BACK";
     }
   } else if (spop.pop_num == POPUP_SAVFILE) {
     model.row_top = 18;
@@ -2510,7 +2742,24 @@ static void render_ui_browser_phase4(volatile uint8_t *frame) {
   else if (smenu.menu_tab != MENUTAB_ROMBROWSE)
     model.selected_dock = 3;
 
-  if (smenu.menu_tab == MENUTAB_ROMBROWSE) {
+  if (smenu.menu_tab == MENUTAB_FAVORITES) {
+    if (smenu.favorites.maxentries) {
+      model.show_cover = true;
+      unsigned selected_row = smenu.favorites.selector -
+                              smenu.favorites.seloff;
+      unsigned available = smenu.favorites.maxentries -
+                           smenu.favorites.seloff;
+      model.entry_count = MIN(available, UI_BROWSER_V2_ROWS);
+      model.selected_row = MIN(selected_row, model.entry_count - 1);
+
+      for (unsigned i = 0; i < model.entry_count; i++) {
+        t_rentry *entry =
+          &sdr_state->faventries[smenu.favorites.seloff + i];
+        model.entries[i].name = &entry->fpath[entry->fname_offset];
+        model.entries[i].kind = UiBrowserV2Game;
+      }
+    }
+  } else if (smenu.menu_tab == MENUTAB_ROMBROWSE) {
     model.show_cover = true;
     unsigned selected_row = smenu.browser.selector - smenu.browser.seloff;
     unsigned available = smenu.browser.dispentries - smenu.browser.seloff;
@@ -2609,64 +2858,76 @@ static void render_ui_browser_phase4(volatile uint8_t *frame) {
       model.entries[i].kind = UiBrowserV2Other;
     }
   } else if (smenu.menu_tab == MENUTAB_INFO) {
-    char value1[40], value2[40], value3[40];
+    char values[UI_BROWSER_V2_ROWS][40];
+    unsigned base = smenu.info.seloff;
     model.wide = true;
-    model.selected_row = 0;
-    model.entries[0].value = "A: NEXT";
-    if (smenu.info.selector == 0) {
-      model.entry_count = 5;
-      model.entries[0].name = SUPERR7_PRODUCT_NAME;
-      model.entries[1].name = "Maintainer";
-      model.entries[1].value = SUPERR7_MAINTAINER;
-      model.entries[2].name = "Based on";
-      model.entries[2].value = SUPERR7_UPSTREAM_NAME " by " SUPERR7_UPSTREAM_AUTHOR;
-      model.entries[3].name = "Version";
-      npf_snprintf(value2, sizeof(value2), "%lu.%lu",
-                   (uint32_t)(VERSION_WORD >> 16),
-                   (uint32_t)(VERSION_WORD & 0xFFFF));
-      model.entries[3].value = value2;
-      model.entries[4].name = "Build";
-      npf_snprintf(value3, sizeof(value3), FW_FLAVOUR " %08lx",
-                   (uint32_t)VERSION_SLUG_WORD);
-      model.entries[4].value = value3;
-    } else if (smenu.info.selector == 1) {
-      model.entry_count = 4;
-      model.entries[0].name = "Flash info";
-      model.entries[1].name = "Device ID";
-      npf_snprintf(value1, sizeof(value1), "%08lx", flashinfo.deviceid);
-      model.entries[1].value = value1;
-      model.entries[2].name = "Capacity";
-      if (flashinfo.size)
-        human_size_kb(value2, sizeof(value2), flashinfo.size >> 10);
-      else
-        npf_snprintf(value2, sizeof(value2), "%d KiB", FW_MAX_SIZE_KB);
-      model.entries[2].value = value2;
-      model.entries[3].name = "Updater";
-      model.entries[3].value = enable_flashing ? "Enabled" : "Locked";
-    } else if (smenu.info.selector == 2) {
-      model.entry_count = 3;
-      model.entries[0].name = "Patch database";
-      model.entries[1].name = "Version";
-      npf_snprintf(value1, sizeof(value1), "%s - %s", pdbinfo.version, pdbinfo.date);
-      model.entries[1].value = value1;
-      model.entries[2].name = "Game count";
-      npf_snprintf(value2, sizeof(value2), "%lu", pdbinfo.patch_count);
-      model.entries[2].value = value2;
-    } else {
-      model.entry_count = 4;
-      model.entries[0].name = "SD card";
-      model.entries[1].name = "Type";
-      model.entries[1].value = sd_info.sdhc ? "SDHC" : "SDSC";
-      model.entries[2].name = "Capacity";
-      human_size_kb(value2, sizeof(value2), sd_info.block_cnt / 2);
-      model.entries[2].value = value2;
-      model.entries[3].name = "Card ID";
-      npf_snprintf(value3, sizeof(value3), "%02x | %04x",
-                   sd_info.manufacturer, sd_info.oemid);
-      model.entries[3].value = value3;
-    }
-    for (unsigned i = 0; i < model.entry_count; i++)
+    model.entry_count = MIN(InfoCNT - base, UI_BROWSER_V2_ROWS);
+    model.selected_row = smenu.info.selector - base;
+    for (unsigned i = 0; i < model.entry_count; i++) {
+      unsigned row = base + i;
       model.entries[i].kind = UiBrowserV2Other;
+      switch (row) {
+      case InfoSystem:
+        model.entries[i].name = "System information";
+        model.entries[i].value = SUPERR7_PRODUCT_NAME;
+        break;
+      case InfoMaintainer:
+        model.entries[i].name = "Maintainer";
+        model.entries[i].value = SUPERR7_MAINTAINER;
+        break;
+      case InfoBasedOn:
+        model.entries[i].name = "Based on";
+        model.entries[i].value = SUPERR7_UPSTREAM_NAME;
+        break;
+      case InfoBuild:
+        model.entries[i].name = "Build";
+        model.entries[i].value = "";
+        break;
+      case InfoFlashDevice:
+        model.entries[i].name = "Flash device ID";
+        npf_snprintf(values[i], sizeof(values[i]), "%08lx", flashinfo.deviceid);
+        model.entries[i].value = values[i];
+        break;
+      case InfoFlashCapacity:
+        model.entries[i].name = "Flash capacity";
+        if (flashinfo.size)
+          human_size_kb(values[i], sizeof(values[i]), flashinfo.size >> 10);
+        else
+          npf_snprintf(values[i], sizeof(values[i]), "%d KiB", FW_MAX_SIZE_KB);
+        model.entries[i].value = values[i];
+        break;
+      case InfoUpdater:
+        model.entries[i].name = "Updater";
+        model.entries[i].value = enable_flashing ? "< Unlocked >" : "< Locked >";
+        break;
+      case InfoPatchDatabase:
+        model.entries[i].name = "Patch database";
+        npf_snprintf(values[i], sizeof(values[i]), "%s - %s",
+                     pdbinfo.version, pdbinfo.date);
+        model.entries[i].value = values[i];
+        break;
+      case InfoPatchCount:
+        model.entries[i].name = "Patch game count";
+        npf_snprintf(values[i], sizeof(values[i]), "%lu", pdbinfo.patch_count);
+        model.entries[i].value = values[i];
+        break;
+      case InfoSDType:
+        model.entries[i].name = "SD card type";
+        model.entries[i].value = sd_info.sdhc ? "SDHC" : "SDSC";
+        break;
+      case InfoSDCapacity:
+        model.entries[i].name = "SD capacity";
+        human_size_kb(values[i], sizeof(values[i]), sd_info.block_cnt / 2);
+        model.entries[i].value = values[i];
+        break;
+      case InfoSDCardId:
+        model.entries[i].name = "SD card ID";
+        npf_snprintf(values[i], sizeof(values[i]), "%02x | %04x",
+                     sd_info.manufacturer, sd_info.oemid);
+        model.entries[i].value = values[i];
+        break;
+      }
+    }
   } else {
     model.wide = true;
   }
@@ -2831,7 +3092,11 @@ static void menu_cover_request_selected() {
   const char *rom_path = NULL;
   char browser_path[MAX_FN_LEN];
 
-  if (smenu.menu_tab == MENUTAB_RECENT && smenu.recent.maxentries) {
+  if (smenu.menu_tab == MENUTAB_FAVORITES &&
+      smenu.favorites.maxentries) {
+    favorite_copy_path(smenu.favorites.selector, browser_path);
+    rom_path = browser_path;
+  } else if (smenu.menu_tab == MENUTAB_RECENT && smenu.recent.maxentries) {
     rom_path = sdr_state->rentries[smenu.recent.selector].fpath;
   } else if (smenu.menu_tab == MENUTAB_ROMBROWSE && smenu.browser.dispentries) {
     t_centry *entry = sdr_state->fileorder[smenu.browser.selector];
@@ -2954,6 +3219,9 @@ void menu_init(int sram_testres) {
 
   // Load recent ROMs (we could disable this for speed)
   recent_reload();
+#ifdef UI_BROWSER_V2
+  favorites_reload();
+#endif
 
   reload_theme();
 
@@ -3220,6 +3488,14 @@ static void keypress_popup_loadgba(unsigned newkeys) {
       spop.alert_msg = msgs[lang_id][MSG_REMEMB_CFG_OK];
     }
 #ifdef UI_BROWSER_V2
+    else if (GbaLoadPopInfo == spop.submenu &&
+             spop.selector == GBAFavoriteButt) {
+      int favorite = favorite_find(spop.p.load.i.romfn);
+      bool saved = favorite >= 0 ? favorite_delete_flush(favorite) :
+                                   favorite_add_flush(spop.p.load.i.romfn);
+      if (!saved)
+        spop.alert_msg = msgs[lang_id][MSG_ERR_GENERIC];
+    }
     else if (GbaLoadPopInfo == spop.submenu &&
              spop.selector == GBAOptionsButt) {
       spop.submenu = GbaLoadPopLoadS;
@@ -3643,8 +3919,46 @@ static void keypress_popup_filemgr(unsigned newkeys) {
 }
 
 #ifdef UI_BROWSER_V2
+static void keypress_menu_list_navigation(unsigned newkeys, int *selector,
+                                           int *seloff, int maxentries,
+                                           int rows) {
+  int page_delta = (newkeys & KEY_BUTTLEFT) ? -1 :
+                   (newkeys & KEY_BUTTRIGHT) ? 1 : 0;
+  int item_delta = page_delta ? 0 :
+                   (newkeys & KEY_BUTTUP) ? -1 :
+                   (newkeys & KEY_BUTTDOWN) ? 1 : 0;
+  menu_list_navigate(selector, seloff, maxentries, rows,
+                     item_delta, page_delta);
+}
+
 static void keypress_menu_favorites(unsigned newkeys) {
-  (void)newkeys;
+  if (!smenu.favorites.maxentries)
+    return;
+
+  keypress_menu_list_navigation(newkeys, &smenu.favorites.selector,
+                                &smenu.favorites.seloff,
+                                smenu.favorites.maxentries, FAVORITES_ROWS);
+
+#ifndef COVER_ART_DEMO
+  if (newkeys & KEY_BUTTA) {
+    char path[MAX_FN_LEN];
+    favorite_copy_path(smenu.favorites.selector, path);
+    FILINFO info;
+    if (FR_OK == f_stat(path, &info))
+      browser_open(path, info.fsize);
+    else
+      spop.alert_msg = msgs[lang_id][MSG_ERR_READ];
+  } else
+#endif
+  if (newkeys & KEY_BUTTSEL) {
+    favorite_pending_delete = smenu.favorites.selector;
+    spop.qpop.message = "Remove Favorite?";
+    spop.qpop.default_button = msgs[lang_id][MSG_Q_NO];
+    spop.qpop.confirm_button = msgs[lang_id][MSG_Q_YES];
+    spop.qpop.option = 0;
+    spop.qpop.callback = favorite_delete_callback;
+    spop.qpop.clear_popup_ok = false;
+  }
 }
 
 static uint32_t cycle_setting(uint32_t value, unsigned count, int direction) {
@@ -3694,6 +4008,11 @@ static void keypress_menu_appearance(unsigned newkeys) {
 
 static void keypress_menu_recent(unsigned newkeys) {
   if (smenu.recent.maxentries) {
+#ifdef UI_BROWSER_V2
+    keypress_menu_list_navigation(newkeys, &smenu.recent.selector,
+                                  &smenu.recent.seloff,
+                                  smenu.recent.maxentries, RECENT_ROWS);
+#else
     if (newkeys & KEY_BUTTUP)
       smenu.recent.selector = MAX(0, smenu.recent.selector - 1);
     else if (newkeys & KEY_BUTTDOWN)
@@ -3706,14 +4025,18 @@ static void keypress_menu_recent(unsigned newkeys) {
       smenu.recent.selector = MIN(smenu.recent.maxentries - 1, smenu.recent.selector + RECENT_ROWS);
       smenu.recent.seloff   = MIN(smenu.recent.maxentries - 1, smenu.recent.seloff   + RECENT_ROWS);
     }
+#endif
 #ifndef COVER_ART_DEMO
     if (newkeys & KEY_BUTTA) {
       t_rentry *e = &sdr_state->rentries[smenu.recent.selector];
+      char path[MAX_FN_LEN];
+      dma_memcpy16(path, e->fpath, MAX_FN_LEN / 2);
+      path[MAX_FN_LEN - 1] = 0;
       // stat() the file since we need the size, and validate that it exists!
       FILINFO info;
-      FRESULT res = f_stat(e->fpath, &info);
+      FRESULT res = f_stat(path, &info);
       if (res == FR_OK) {
-        browser_open(e->fpath, info.fsize);
+        browser_open(path, info.fsize);
       } else {
         spop.alert_msg = msgs[lang_id][MSG_ERR_READ];
       }
@@ -3734,14 +4057,21 @@ static void keypress_menu_recent(unsigned newkeys) {
 #endif
   }
 
+#ifndef UI_BROWSER_V2
   if (smenu.recent.selector < smenu.recent.seloff)
     smenu.recent.seloff = smenu.recent.selector;
   else if (smenu.recent.selector >= smenu.recent.seloff + RECENT_ROWS)
     smenu.recent.seloff = smenu.recent.selector - RECENT_ROWS + 1;
+#endif
 }
 
 static void keypress_menu_browse(unsigned newkeys) {
   if (smenu.browser.dispentries) {
+#ifdef UI_BROWSER_V2
+    keypress_menu_list_navigation(newkeys, &smenu.browser.selector,
+                                  &smenu.browser.seloff,
+                                  smenu.browser.dispentries, BROWSER_ROWS);
+#else
     // Move menu up and down
     if (newkeys & KEY_BUTTUP)
       smenu.browser.selector = MAX(0, smenu.browser.selector - 1);
@@ -3755,6 +4085,7 @@ static void keypress_menu_browse(unsigned newkeys) {
       smenu.browser.selector = MIN(smenu.browser.dispentries - 1, smenu.browser.selector + BROWSER_ROWS);
       smenu.browser.seloff   = MIN(smenu.browser.dispentries - 1, smenu.browser.seloff   + BROWSER_ROWS);
     }
+#endif
     // Move into a new dir and/or open a file
 #ifndef COVER_ART_DEMO
     if (newkeys & KEY_BUTTA) {
@@ -3832,12 +4163,14 @@ static void keypress_menu_browse(unsigned newkeys) {
   }
 #endif
 
+#ifndef UI_BROWSER_V2
   // Selector was updated, figure out how we update the menu params so it
   // can be rendered properly.
   if (smenu.browser.selector < smenu.browser.seloff)
     smenu.browser.seloff = smenu.browser.selector;
   else if (smenu.browser.selector >= smenu.browser.seloff + BROWSER_ROWS)
     smenu.browser.seloff = smenu.browser.selector - BROWSER_ROWS + 1;
+#endif
 }
 
 #ifdef SUPPORT_NORGAMES
@@ -4146,10 +4479,26 @@ static void keypress_menu_tools(unsigned newkeys) {
 }
 
 static void keypress_menu_info(unsigned newkeys) {
+#ifdef UI_BROWSER_V2
+  if (newkeys & KEY_BUTTUP)
+    smenu.info.selector = MAX(0, smenu.info.selector - 1);
+  if (newkeys & KEY_BUTTDOWN)
+    smenu.info.selector = MIN(InfoCNT - 1, smenu.info.selector + 1);
+
+  if (smenu.info.selector < smenu.info.seloff)
+    smenu.info.seloff = smenu.info.selector;
+  else if (smenu.info.selector >= smenu.info.seloff + UI_BROWSER_V2_ROWS)
+    smenu.info.seloff = smenu.info.selector - UI_BROWSER_V2_ROWS + 1;
+
+  if (smenu.info.selector == InfoUpdater &&
+      (newkeys & (KEY_BUTTA | KEY_BUTTLEFT | KEY_BUTTRIGHT)))
+    enable_flashing ^= 1;
+#else
   if (newkeys & KEY_BUTTA)
     smenu.info.selector = (smenu.info.selector + 1) % 4;
   if ((newkeys & FLASH_UNLOCK_KEYS) == FLASH_UNLOCK_KEYS)
     enable_flashing = true;
+#endif
 }
 
 #ifdef UI_BROWSER_V2

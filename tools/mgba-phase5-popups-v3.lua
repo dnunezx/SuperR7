@@ -1,4 +1,4 @@
--- Copyright (C) 2026 Danny Nunez
+-- Copyright (C) 2026 Danny Nunez (dnunezx)
 
 local output = script.dir .. "/../artifacts/phase5-popups-v3/"
 local start_frame = nil
@@ -21,9 +21,8 @@ local taps = {
   {260, C.GBA_KEY.R},
   {330, C.GBA_KEY.B},
   {340, C.GBA_KEY.B},
-  {350, C.GBA_KEY.DOWN}, {365, C.GBA_KEY.DOWN},
-  {380, C.GBA_KEY.DOWN}, {395, C.GBA_KEY.DOWN},
-  {410, C.GBA_KEY.DOWN}, {425, C.GBA_KEY.DOWN},
+  -- Jump to the final full seven-row window, then select Seventh Entry.sav.
+  {360, C.GBA_KEY.RIGHT}, {380, C.GBA_KEY.UP},
   {445, C.GBA_KEY.A},
   {520, C.GBA_KEY.B},
   {540, C.GBA_KEY.SELECT},

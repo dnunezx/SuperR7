@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Copyright 2024 David Guillen Fandos <david@davidgf.net>
-# Copyright (C) 2026 Danny Nunez
+# Copyright (C) 2026 Danny Nunez (dnunezx)
 # Fixes GBA header and patches checksums and other relevant header fields
 
 import sys, hashlib, struct

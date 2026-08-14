@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Danny Nunez
+# Copyright (C) 2026 Danny Nunez (dnunezx)
 
 from __future__ import annotations
 
@@ -31,6 +31,15 @@ def palette(data: bytes, index: int) -> int:
     return int.from_bytes(data[index * 2:index * 2 + 2], "little")
 
 
+def assert_cover_is_unobstructed(data: bytes, name: str) -> None:
+    for y in range(33, 109):
+        for x in range(4, 80):
+            if pixel(data, x, y) < 20:
+                raise AssertionError(
+                    f"{name} loading frame has a UI overlay in the cover"
+                )
+
+
 def gba_bgr555(rgb: int) -> int:
     return ((rgb >> 19) & 0x1F) | ((rgb >> 6) & 0x3E0) | ((rgb << 7) & 0x7C00)
 
@@ -58,6 +67,7 @@ def main() -> None:
             raise AssertionError(f"{name} progress border does not use Selection")
         if pixel(data, 0, 144) != 11 or pixel(data, 125, 150) != 1:
             raise AssertionError(f"{name} loading footer is not theme-aware")
+        assert_cover_is_unobstructed(data, name)
 
         visual.render_frame(CAPTURES / f"{name}.frame").save(
             CAPTURES / f"{name}.png"

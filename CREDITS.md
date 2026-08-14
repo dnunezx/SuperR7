@@ -2,15 +2,15 @@
 
 ## SuperR7
 
-- **Danny Nunez** - SuperR7 founder and maintainer; cover-art integration,
+- **Danny Nunez (dnunezx)** - SuperR7 founder and maintainer; cover-art integration,
   native 76-by-76 cover format, seven-row card browser, navigation dock,
   Appearance and theme system, Phase 5 secondary-screen redesign, hardware
   validation, SuperCover workflow, and ongoing SuperR7 development.
 
 New SuperR7-specific code and substantial SuperR7 modifications are marked
-with `Copyright (C) 2026 Danny Nunez` in their source headers. Future commits
-in this repository should use Danny Nunez as the author name when his work is
-being committed.
+with `Copyright (C) 2026 Danny Nunez (dnunezx)` in their source headers. Future
+commits in this repository should use Danny Nunez (dnunezx) as the author name
+when his work is being committed.
 
 ## Upstream foundation
 

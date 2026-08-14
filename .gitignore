@@ -3,6 +3,8 @@
 *.comp
 *.map
 *.payload
+*.bin
+*.sav
 *.gcda
 *.gcno
 *.info
@@ -10,5 +12,7 @@
 __pycache__/
 *.py[cod]
 artifacts/
+build/
+dist/
 src/menu_messages.h
 src/messages_data.h

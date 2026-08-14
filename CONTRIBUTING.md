@@ -1,15 +1,15 @@
 # Contributing to SuperR7
 
-SuperR7 is an independent GPL-3.0-or-later project maintained by Danny Nunez.
+SuperR7 is an independent GPL-3.0-or-later project maintained by Danny Nunez (dnunezx).
 
 ## Attribution policy
 
 - Preserve every existing upstream and third-party copyright or license notice.
 - Do not replace an upstream author's copyright when modifying their file.
-- Add `Copyright (C) <year> Danny Nunez` to new SuperR7 source files and to
-  upstream files that receive substantial SuperR7-specific changes.
-- Use `Danny Nunez` as the Git author name for Danny's work. The repository's
-  configured noreply email may continue to be used.
+- Add `Copyright (C) <year> Danny Nunez (dnunezx)` to new SuperR7 source files
+  and to upstream files that receive substantial SuperR7-specific changes.
+- Use `Danny Nunez (dnunezx)` as the Git author name for Danny's work. The
+  repository's configured noreply email may continue to be used.
 - Credit additional contributors by their requested name and preserve their
   Git authorship.
 - Keep compatibility identifiers such as `/.superfw/` and inherited firmware

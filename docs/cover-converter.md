@@ -1,8 +1,8 @@
-# SuperFW Cover Converter
+# SuperR7 cover converter
 
-The converter turns PNG, JPEG, WebP, or BMP artwork into version 2 `.sfcov`
-files. It can also write a PNG preview using the exact 15-bit colors that the
-GBA will display.
+The converter turns PNG, JPEG, WebP, or BMP artwork into the production
+version 3 `.sfcov` format. Output is fixed at 76 by 76 pixels and uses the same
+15-bit colors that the GBA displays.
 
 ## Install
 
@@ -21,22 +21,9 @@ py tools\cover_converter.py convert `
   --preview "Pokemon Emerald-preview.png"
 ```
 
-The default `cover` resize mode fills the 72-by-72 square canvas using a centered
-crop. To preserve the entire source image with letterboxing:
-
-```powershell
-py tools\cover_converter.py convert source.png output.sfcov --mode contain
-```
-
-Transparent pixels and letterboxing use black by default. Supply any
-Pillow-compatible color for a different background:
-
-```powershell
-py tools\cover_converter.py convert source.png output.sfcov `
-  --mode contain --background "#202040"
-```
-
-Existing files are never replaced unless `--overwrite` is supplied.
+The default `cover` resize mode fills the square canvas using a centered crop.
+Use `--mode contain` to preserve the complete source image with letterboxing.
+Existing output is never replaced unless `--overwrite` is supplied.
 
 ## Convert a directory
 
@@ -49,10 +36,9 @@ py tools\cover_converter.py batch `
 ```
 
 Recursive conversion preserves subdirectories. Output names use the source
-basename with the `.sfcov` extension. If two source files would produce the
-same output name, the batch is rejected before any files are written.
+basename with the `.sfcov` extension.
 
-## Inspect or preview an existing cover
+## Inspect or preview a cover
 
 ```powershell
 py tools\cover_converter.py inspect "Pokemon Emerald.sfcov"
@@ -60,15 +46,9 @@ py tools\cover_converter.py inspect "Pokemon Emerald.sfcov" `
   --preview decoded-preview.png
 ```
 
-Inspection performs the same strict validation expected from the firmware,
-including dimensions, payload lengths, palette indices, and CRC-32.
-
-## Image choices
-
-- `--mode cover` is recommended for normal portrait box art.
-- `--mode contain` is useful for screenshots or unusually shaped artwork.
-- `--dither floyd-steinberg` is the default and generally preserves gradients.
-- `--dither none` produces cleaner flat-color illustrations and logos.
-
-The converter does not download artwork. Users are responsible for sourcing
+Inspection validates dimensions, payload lengths, palette indices, and CRC-32.
+The converter does not download artwork; users are responsible for sourcing
 images they are permitted to use.
+
+The superseded 72-by-72 version 2 converter remains available as
+`tools/cover_converter_v2.py` for compatibility work only.

@@ -165,21 +165,21 @@ all:	$(FWBINFILES) $(BIEMUFILES) directsave.payload ingame_trampoline.payload
 	$(CC) $(CFLAGS) -o firmware.elf rom_boot.S -T ldscripts/gba_romboot.ld -nostartfiles -nostdlib -Wl,--defsym,MAX_FLASH_SIZE=$(MAXFSIZE)K
 	$(OBJCOPY) --output-target=binary firmware.elf superfw.gba
 	# Fix the header/checksum.
-	./tools/fw-fixer.py superfw.gba
+	./tools/finalize_gba_image.py superfw.gba
 
 superfw-ui.gba: firmware.ui.ewram.gba.comp res/patches.db.comp res/fonts.pack.comp $(BIEMUFILES) directsave.payload ingame_trampoline.payload
 	$(CC) $(CFLAGS) -DFW_EWRAM_PAYLOAD='"firmware.ui.ewram.gba.comp"' \
 		-o firmware.ui.elf rom_boot.S -T ldscripts/gba_romboot.ld -nostartfiles -nostdlib \
 		-Wl,--defsym,MAX_FLASH_SIZE=$(MAXFSIZE)K
 	$(OBJCOPY) --output-target=binary firmware.ui.elf superfw-ui.gba
-	./tools/fw-fixer.py superfw-ui.gba
+	./tools/finalize_gba_image.py superfw-ui.gba
 
 superfw-ui-v3.gba: firmware.ui.v3.ewram.gba.comp res/patches.db.comp res/fonts.pack.comp $(BIEMUFILES) directsave.payload ingame_trampoline.payload
 	$(CC) $(CFLAGS) -DCOVER_ART_V3 -DFW_EWRAM_PAYLOAD='"firmware.ui.v3.ewram.gba.comp"' \
 		-o firmware.ui.v3.elf rom_boot.S -T ldscripts/gba_romboot.ld -nostartfiles -nostdlib \
 		-Wl,--defsym,MAX_FLASH_SIZE=$(MAXFSIZE)K
 	$(OBJCOPY) --output-target=binary firmware.ui.v3.elf superfw-ui-v3.gba
-	./tools/fw-fixer.py superfw-ui-v3.gba
+	./tools/finalize_gba_image.py superfw-ui-v3.gba
 
 # Official SuperR7 SD build. Keep the legacy target available for comparison
 # while the standalone fork establishes its release workflow.
@@ -190,7 +190,7 @@ cover-demo.gba: firmware.demo.ewram.gba src/cover_demo_boot.S ldscripts/gba_cove
 	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -o cover-demo.elf src/cover_demo_boot.S \
 		-T ldscripts/gba_cover_demo.ld -nostartfiles -nostdlib
 	$(OBJCOPY) --output-target=binary cover-demo.elf cover-demo.gba
-	./tools/fw-fixer.py --header-only cover-demo.gba
+	./tools/finalize_gba_image.py --header-only cover-demo.gba
 
 cover-demo-v3.gba: firmware.demo.v3.ewram.gba src/cover_demo_boot.S ldscripts/gba_cover_demo.ld
 	$(CC) $(CFLAGS) -DCOVER_ART_DEMO -DCOVER_ART_V3 \
@@ -198,7 +198,7 @@ cover-demo-v3.gba: firmware.demo.v3.ewram.gba src/cover_demo_boot.S ldscripts/gb
 		-o cover-demo-v3.elf src/cover_demo_boot.S \
 		-T ldscripts/gba_cover_demo.ld -nostartfiles -nostdlib
 	$(OBJCOPY) --output-target=binary cover-demo-v3.elf cover-demo-v3.gba
-	./tools/fw-fixer.py --header-only cover-demo-v3.gba
+	./tools/finalize_gba_image.py --header-only cover-demo-v3.gba
 
 ingame-menu-demo.gba: firmware.ingame.demo.ewram.gba src/cover_demo_boot.S ldscripts/gba_cover_demo.ld
 	$(CC) $(CFLAGS) -DCOVER_ART_DEMO \
@@ -206,7 +206,7 @@ ingame-menu-demo.gba: firmware.ingame.demo.ewram.gba src/cover_demo_boot.S ldscr
 		-o ingame-menu-demo.elf src/cover_demo_boot.S \
 		-T ldscripts/gba_cover_demo.ld -nostartfiles -nostdlib
 	$(OBJCOPY) --output-target=binary ingame-menu-demo.elf ingame-menu-demo.gba
-	./tools/fw-fixer.py --header-only ingame-menu-demo.gba
+	./tools/finalize_gba_image.py --header-only ingame-menu-demo.gba
 
 firmware.ingame.demo.ewram.gba: $(INGAME_DEMO_INFILES) src/gba_ewram_crt0.S src/menu_messages.h ldscripts/gba_ewram.ld.i
 	$(CC) $(CFLAGS) -DUI_BROWSER_V2 -DINGAME_MENU_DEMO \

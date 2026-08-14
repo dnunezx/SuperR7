@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Danny Nunez
+ * Copyright (C) 2026 Danny Nunez (dnunezx)
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -27,7 +27,7 @@ const char *const ui_theme_preset_names[UiThemePresetCount] = {
 };
 
 const char *const ui_wallpaper_names[UiWallpaperCount] = {
-  "None", "Weave", "Grid", "Circuit",
+  "None", "Weave", "Grid", "Circuit", "Tech Frame",
 };
 
 const char *const ui_contrast_names[UiContrastCount] = {

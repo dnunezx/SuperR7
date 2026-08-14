@@ -1,4 +1,4 @@
--- Copyright (C) 2026 Danny Nunez
+-- Copyright (C) 2026 Danny Nunez (dnunezx)
 
 local output = script.dir .. "/../artifacts/phase5-popups-v3/"
 local start_frame = nil
@@ -19,21 +19,22 @@ local taps = {
   {120, C.GBA_KEY.A},
   {190, C.GBA_KEY.DOWN},
   {250, C.GBA_KEY.DOWN},
-  {310, C.GBA_KEY.A},
-  {380, C.GBA_KEY.B},
-  {440, C.GBA_KEY.R},
-  {510, C.GBA_KEY.R},
-  {580, C.GBA_KEY.B},
-  {600, C.GBA_KEY.B},
+  {310, C.GBA_KEY.DOWN},
+  {370, C.GBA_KEY.A},
+  {440, C.GBA_KEY.B},
+  {500, C.GBA_KEY.R},
+  {570, C.GBA_KEY.R},
+  {640, C.GBA_KEY.B},
 }
 
 local shots = {
   [170] = "launch-quick",
-  [230] = "launch-quick-options",
-  [290] = "launch-quick-details",
-  [360] = "launch-details",
-  [490] = "launch-options",
-  [560] = "launch-advanced",
+  [230] = "launch-quick-favorite",
+  [290] = "launch-quick-options",
+  [350] = "launch-quick-details",
+  [420] = "launch-details",
+  [550] = "launch-options",
+  [620] = "launch-advanced",
 }
 
 callbacks:add("frame", function()
@@ -47,7 +48,7 @@ callbacks:add("frame", function()
   end
 
   if shots[frame] then shot(shots[frame]) end
-  if frame == 620 then
+  if frame == 680 then
     local marker = assert(io.open(output .. "launch-complete.txt", "w"))
     marker:write("mGBA Phase 5 launch refinement completed\n")
     marker:close()

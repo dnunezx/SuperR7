@@ -1,6 +1,6 @@
--- Copyright (C) 2026 Danny Nunez
+-- Copyright (C) 2026 Danny Nunez (dnunezx)
 
-local output = script.dir .. "/../artifacts/phase9-boot-logo-hardware/"
+local output = script.dir .. "/../artifacts/boot-logo/"
 local start_frame = nil
 
 local function shot(name)
@@ -16,18 +16,18 @@ local function shot(name)
 end
 
 local shots = {
-  [0] = "boot-00",
-  [1] = "boot-01",
-  [2] = "boot-02",
-  [3] = "boot-03",
-  [4] = "boot-04",
-  [5] = "boot-05",
-  [6] = "boot-06",
-  [8] = "boot-08",
-  [10] = "boot-10",
-  [12] = "boot-12",
-  [15] = "boot-15",
-  [20] = "boot-20",
+  [0] = "boot-v2-00",
+  [1] = "boot-v2-01",
+  [2] = "boot-v2-02",
+  [3] = "boot-v2-03",
+  [4] = "boot-v2-04",
+  [5] = "boot-v2-05",
+  [6] = "boot-v2-06",
+  [8] = "boot-v2-08",
+  [10] = "boot-v2-10",
+  [12] = "boot-v2-12",
+  [15] = "boot-v2-15",
+  [20] = "boot-v2-20",
 }
 
 callbacks:add("frame", function()
@@ -36,8 +36,8 @@ callbacks:add("frame", function()
 
   if shots[frame] then shot(shots[frame]) end
   if frame == 24 then
-    local marker = assert(io.open(output .. "complete.txt", "w"))
-    marker:write("mGBA SuperR7 boot-logo capture completed\n")
+    local marker = assert(io.open(output .. "complete-v2.txt", "w"))
+    marker:write("mGBA SuperR7 boot-logo v2 capture completed\n")
     marker:close()
   end
 end)

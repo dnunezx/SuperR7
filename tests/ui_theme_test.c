@@ -1,4 +1,4 @@
-/* Copyright (C) 2026 Danny Nunez */
+/* Copyright (C) 2026 Danny Nunez (dnunezx) */
 
 #include <assert.h>
 #include <stdint.h>
@@ -28,6 +28,7 @@ static void test_presets(void) {
   assert(!strcmp(ui_theme_preset_names[UiThemeMutantGreen], "MUTANT GREEN"));
   assert(!strcmp(ui_theme_preset_names[UiThemeStealthBlack], "STEALTH BLACK"));
   assert(!strcmp(ui_theme_preset_names[UiThemeChromeSilver], "CHROME SILVER"));
+  assert(!strcmp(ui_wallpaper_names[UiWallpaperTechFrame], "Tech Frame"));
   assert(!strcmp(ui_theme_color_names[UiColorGreen], "Green"));
 
   ui_theme_reset(UiThemeElectricBlue);

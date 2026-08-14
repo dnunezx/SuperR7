@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Danny Nunez
+# Copyright (C) 2026 Danny Nunez (dnunezx)
 
 from __future__ import annotations
 
@@ -10,7 +10,8 @@ import cover_demo_visual as visual
 CAPTURES = Path("artifacts/phase5-popups-v3")
 FRAME_SIZE = 512 + 240 * 160
 CAPTURE_NAMES = (
-    "launch-quick", "launch-quick-options", "launch-quick-details",
+    "launch-quick", "launch-quick-favorite", "launch-quick-options",
+    "launch-quick-details",
     "launch-details", "launch-options", "launch-advanced",
     "save-actions", "file-actions", "firmware-update",
     "confirm-no", "confirm-yes", "rtc-year", "rtc-month",
@@ -44,7 +45,7 @@ def assert_rows(
 
 def assert_launch(name: str, selected: int) -> None:
     data = frame(name)
-    centers = (12, 40, 74, 105)
+    centers = (12, 38, 66, 94, 122)
     for row, y in enumerate(centers):
         expected = 6 if row == selected else 5
         actual = pixel(data, 6 if row == 0 else 88, y)
@@ -56,8 +57,9 @@ def assert_launch(name: str, selected: int) -> None:
 
 def main() -> None:
     assert_launch("launch-quick", 1)
-    assert_launch("launch-quick-options", 2)
-    assert_launch("launch-quick-details", 3)
+    assert_launch("launch-quick-favorite", 2)
+    assert_launch("launch-quick-options", 3)
+    assert_launch("launch-quick-details", 4)
     assert_rows("launch-details", 6, None)
     assert_rows("launch-options", 6, 1)
     assert_rows("launch-advanced", 6, 1)
@@ -76,8 +78,8 @@ def main() -> None:
         raise AssertionError("RTC field selection did not move")
 
     quick_states = (
-        frame("launch-quick"), frame("launch-quick-options"),
-        frame("launch-quick-details"),
+        frame("launch-quick"), frame("launch-quick-favorite"),
+        frame("launch-quick-options"), frame("launch-quick-details"),
     )
     covers = []
     for data in quick_states:
@@ -89,17 +91,17 @@ def main() -> None:
     if len(set(covers)) != 1:
         raise AssertionError("Quick Launch selection changed the cover artwork")
 
-    launch_screens = CAPTURE_NAMES[:6]
+    launch_screens = CAPTURE_NAMES[:7]
     for name in launch_screens:
         data = frame(name)
         if pixel(data, 0, 144) != 11 or pixel(data, 125, 150) != 1:
             raise AssertionError(f"{name} did not replace the dock with its footer")
 
-    browse_screens = CAPTURE_NAMES[6:9]
+    browse_screens = CAPTURE_NAMES[7:10]
     for name in browse_screens:
         if pixel(frame(name), 125, 150) != 12:
             raise AssertionError(f"{name} does not keep Browse active in the dock")
-    for name in CAPTURE_NAMES[9:]:
+    for name in CAPTURE_NAMES[10:]:
         if pixel(frame(name), 185, 150) != 12:
             raise AssertionError(f"{name} does not keep Tools active in the dock")
 

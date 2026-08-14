@@ -1,7 +1,7 @@
 # SuperR7
 
 SuperR7 is an independent GPL firmware for SuperCard GBA flash carts,
-maintained by **Danny Nunez**. It begins from the hardware-validated Phase 5
+maintained by **Danny Nunez (dnunezx)**. It begins from the hardware-validated Phase 5
 cover-art and card-interface work developed from David Guillen Fandos's
 [SuperFW](https://github.com/davidgfnet/superfw).
 
@@ -13,11 +13,20 @@ read-only source for selectively reviewed fixes.
 The original SuperFW website and documentation remain useful for inherited
 firmware behavior: https://superfw.davidgf.net/
 
+Documentation
+-------------
+
+- [Documentation index](docs/README.md)
+- [Current SuperR7 interface](docs/interface.md)
+- [Cover format and converter](docs/cover-format.md)
+- [Hardware validation record](docs/hardware-validation.md)
+- [Development history](docs/history/README.md)
+
 Building SuperR7
 ----------------
 
-The official SuperCard SD fork target uses the native 76-by-76 cover format
-and the complete Phase 5 interface:
+The primary SuperCard SD target uses the native 76-by-76 cover format and the
+current SuperR7 interface:
 
 ```sh
 make BOARD=sd COMPRESSION_RATIO=10 superr7.gba
@@ -26,6 +35,15 @@ make BOARD=sd COMPRESSION_RATIO=10 superr7.gba
 The output is `superr7.gba`. Chain-load every new build on hardware before
 considering an internal-flash update. The inherited `superfw.gba` target is
 retained for compatibility and legacy-guard verification.
+
+The current hardware-validated image is the August 14, 2026 fixed-page
+navigation build, `superr7-page-navigation-hardware-test.gba`: 520,192 bytes
+with SHA-256
+`DCD599CD17745FB350A7176C24257377AB9B301E6C5B661B25594E3D53E5C940`.
+Validated binaries remain local until they are attached to a versioned GitHub
+release; generated and test artifacts are intentionally excluded from the
+source tree. See the [hardware validation record](docs/hardware-validation.md)
+for the exact lineage, rollback hashes, and publication policy.
 
 
 Installation
@@ -112,6 +130,23 @@ zone/level/menu. This is due to the GBA featuring some "write-only" registers,
 that is, registers that can be written but never read back. For this reason
 we cannot properly save and restore said registers.
 
+Favorites
+---------
+
+Open a GBA game from Browse to reach Quick Launch. The centered action beneath
+`Launch game` reads `Add to Favorites`; after the game is added, the same action
+reads `Remove Favorite`.
+
+The Favorites dock tab uses the same seven-row list and cover presentation as
+Browse and Recent. Up/Down moves one game, Left/Right changes fixed pages and
+selects the first game on the new page, A opens the normal launch flow, and
+Select removes the selected favorite after a confirmation. The approved empty
+Favorites screen remains unchanged when the list has no entries.
+
+Favorites persist in `/.superfw/favorites.txt` and support up to 200 ROM paths.
+The August 10 Favorites build passed its focused host and mGBA checks and was
+then confirmed working on physical SuperCard SD hardware.
+
 Saving games
 ------------
 
@@ -142,6 +177,7 @@ work. The following files are usually created:
  - .superfw/settings.txt: User settings, loaded on startup.
  - .superfw/ui-settings.txt: UI settings, loaded on startup.
  - .superfw/recent.txt: Recently played ROMs, in order.
+ - .superfw/favorites.txt: Favorite ROM paths, in display order.
  - .superfw/pending-save.txt: SRAM save information (temp file).
  - .superfw/pending-sram-test.txt: SRAM test flag (temp file).
 
@@ -165,8 +201,8 @@ constraints:
 Licenses
 --------
 
-SuperR7-specific work is copyright (C) 2026 Danny Nunez. SuperR7 is based on
-SuperFW, primarily written by David Guillen Fandos (`davidgf`), whose existing
+SuperR7-specific work is copyright (C) 2026 Danny Nunez (dnunezx). SuperR7 is
+based on SuperFW, primarily written by David Guillen Fandos (`davidgf`), whose existing
 copyright and attribution are retained. The firmware is distributed under the
 GNU General Public License, version 3 or later. See [LICENSE](LICENSE) and
 [CREDITS.md](CREDITS.md).

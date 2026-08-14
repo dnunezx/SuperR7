@@ -1,4 +1,4 @@
--- Copyright (C) 2026 Danny Nunez
+-- Copyright (C) 2026 Danny Nunez (dnunezx)
 
 local output = script.dir .. "/../artifacts/phase5-loading-v3/"
 local start_frame = nil

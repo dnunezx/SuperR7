@@ -1,11 +1,11 @@
-# SuperR7 Phase 5 hardware baseline
+# Historical SuperR7 Phase 5 baseline
 
 This directory freezes the exact cleaned Phase 5 candidate that passed
 physical SuperCard SD chain-load validation on August 6, 2026. SuperR7 adopts
 this image and its corresponding source state as the independent fork's
 functional baseline.
 
-- File: `SuperR7-phase5-hardware-baseline.gba`
+- File: `superr7-phase5-baseline.gba`
 - Size: 520,192 bytes
 - Free space below 512 KiB: 4,096 bytes
 - SHA-256:
@@ -17,5 +17,5 @@ The binary still contains inherited SuperFW compatibility identifiers because
 it is the exact pre-branding image that was tested. Do not replace this file
 when later SuperR7 branding or features change the build hash.
 
-SuperR7-specific development and recognition: Danny Nunez.
+SuperR7-specific development and recognition: Danny Nunez (dnunezx).
 Upstream foundation: SuperFW by David Guillen Fandos (`davidgf`).

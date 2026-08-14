@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Danny Nunez
+# Copyright (C) 2026 Danny Nunez (dnunezx)
 
 from __future__ import annotations
 
@@ -52,8 +52,8 @@ def main() -> None:
     for row in range(1, 6):
         if pixel(main_frame, 120, 30 + row * 19) != card:
             raise AssertionError(f"main row {row + 1} is not an unselected card")
-    if pixel(main_frame, 120, 150) != 16 + 1:
-        raise AssertionError("in-game footer did not use the derived deep color")
+    if pixel(main_frame, 120, 150) == 16 + 1:
+        raise AssertionError("removed in-game footer is still visible")
 
     states = [frame(name)[512:] for name in NAMES]
     if len(set(states)) != len(states):

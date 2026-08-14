@@ -1,0 +1,35 @@
+name: SuperR7 tests
+run-name: Build and run SuperR7 tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc lcov python3-pil
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Run C tests
+        run: make -C tests
+
+      - name: Test cover converters and formats
+        run: python3 -m unittest discover -s tests -p '*_test.py'
+
+      - name: Upload coverage report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: superr7-test-coverage-${{ github.sha }}
+          path: tests/coverage/*

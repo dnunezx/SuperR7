@@ -1,4 +1,36 @@
-# Browser UI Phase 1 Native Specification
+# Historical Phase 1 interface specification
+
+> This is the original design checkpoint. See the current
+> [SuperR7 interface guide](../interface.md) for production behavior.
+
+## Production evolution
+
+This document preserves the original Phase 1 design target. Production
+SuperR7 now uses seven rows, native 76-by-76 covers, a 16-pixel dock, and the
+dock order Favorites, Recent, Browse, and Tools. The August 10, 2026 Favorites
+build keeps the same card, cover, title-scroll, and list-navigation behavior
+across Favorites, Browse, and Recent.
+
+Favorites persist at `/.superfw/favorites.txt`. Quick Launch centers
+`Add to Favorites` beneath `Launch game` and toggles it to `Remove Favorite`.
+The archived Phase 11 build used Up/Down for one item and Left/Right for a
+seven-item offset, retaining a full final seven-row window. Focused emulator
+checks and physical SuperCard SD verification passed with that candidate. The
+August 14 production behavior supersedes that navigation model with fixed
+pages, boundary no-ops, and a potentially partial final page. The original
+empty Favorites presentation remains unchanged.
+
+The Launch flow's Options, Advanced, and Details screens now consistently use
+`B: BACK`. The exact archived Phase 13 image passed physical SuperCard SD boot
+and visual testing on August 11, 2026. It became the immediate rollback for
+the boot-logo-v2 firmware at that checkpoint.
+
+On August 12, 2026, `superr7-boot-logo-v2.gba` passed physical hardware
+testing and became the current, most recent hardware-validated SuperR7
+firmware. It replaces the historical Gothic splash and progress bar with a
+centered 112-by-84 stacked `Super R7` logo. Phase 13 is its immediate archived
+rollback for that historical checkpoint. Later hardware-validated Tech Frame
+and fixed-page navigation images now follow it in the accepted lineage.
 
 ## Decision
 
@@ -13,12 +45,12 @@ nearest-neighbor enlargement for inspection only.
 
 ## Reference images
 
-- [Five-row native screen](ui-mockups/phase1/browser-native-5-row.png)
-- [Five-row enlarged inspection copy](ui-mockups/phase1/browser-native-5-row-4x.png)
-- [Six-row native screen](ui-mockups/phase1/browser-native-6-row.png)
-- [Six-row enlarged inspection copy](ui-mockups/phase1/browser-native-6-row-4x.png)
-- [Folder and unsupported-file states](ui-mockups/phase1/browser-native-states.png)
-- [Enlarged state inspection copy](ui-mockups/phase1/browser-native-states-4x.png)
+- [Five-row native screen](../ui-mockups/phase1/browser-native-5-row.png)
+- [Five-row enlarged inspection copy](../ui-mockups/phase1/browser-native-5-row-4x.png)
+- [Six-row native screen](../ui-mockups/phase1/browser-native-6-row.png)
+- [Six-row enlarged inspection copy](../ui-mockups/phase1/browser-native-6-row-4x.png)
+- [Folder and unsupported-file states](../ui-mockups/phase1/browser-native-states.png)
+- [Enlarged state inspection copy](../ui-mockups/phase1/browser-native-states-4x.png)
 
 The images are generated deterministically by
 `tools/render_ui_phase1.py`. The script accepts a square preview image and does

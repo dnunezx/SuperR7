@@ -1,4 +1,4 @@
--- Copyright (C) 2026 Danny Nunez
+-- Copyright (C) 2026 Danny Nunez (dnunezx)
 
 local output = script.dir .. "/../artifacts/ingame-menu/"
 local start_frame = nil

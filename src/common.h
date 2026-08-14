@@ -58,6 +58,7 @@
 #define GBC_EMULATOR_PATH         "/.superfw/emulators/gbc-emu.gba"
 #define SETTINGS_FILEPATH         "/.superfw/settings.txt"
 #define RECENT_FILEPATH           "/.superfw/recent.txt"
+#define FAVORITES_FILEPATH        "/.superfw/favorites.txt"
 #define UISETTINGS_FILEPATH       "/.superfw/ui-settings.txt"
 #define FLASHBACKUPTMP_FILEPATH   "/.superfw/flash_backup.tmp"
 #define FLASHBACKUP_FILEPTRN      "/.superfw/flash_backup-%02x%02x%02x%02x.bin"

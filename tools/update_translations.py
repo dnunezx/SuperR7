@@ -3,7 +3,7 @@
 
 import requests, argparse, time, io, zipfile, os
 
-parser = argparse.ArgumentParser(prog='translation-updator')
+parser = argparse.ArgumentParser(prog='update-translations')
 parser.add_argument('--token', dest='token', required=True, help='Crowdin Personal token')
 parser.add_argument('--project', dest='project', type=int, required=True, help='Project ID')
 parser.add_argument('--bundle', dest='bundle', type=int, required=True, help='Bundle ID')

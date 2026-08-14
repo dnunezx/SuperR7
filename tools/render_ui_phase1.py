@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2026 Danny Nunez
+# Copyright (C) 2026 Danny Nunez (dnunezx)
 """Render deterministic native-resolution browser UI concepts for Phase 1."""
 
 from __future__ import annotations

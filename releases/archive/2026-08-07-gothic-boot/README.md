@@ -1,4 +1,9 @@
-# SuperR7 Phase 9 Gothic boot-logo hardware candidate
+# Historical SuperR7 Gothic boot-logo build
+
+> Historical rollback note: this archived Gothic logo and its grayscale bar
+> were superseded on August 12, 2026 by the hardware-validated stacked
+> `Super R7` boot-logo candidate. The measurements below describe this Phase 9
+> image only; the current implementation has no progress bar.
 
 This folder contains the exact image prepared for physical SuperCard SD
 chain-load validation after the monochrome Gothic boot-splash integration.

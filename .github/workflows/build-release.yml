@@ -1,86 +1,76 @@
-name: SuperFW release
-run-name: Build a full SuperFW release
+name: SuperR7 release candidate
+run-name: Build SuperR7 release candidate
 
 on:
+  workflow_dispatch:
   push:
     branches:
-      - 'master'
+      - main
     tags:
-      - '*'
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  build-firmware:
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        board: [sd, lite, chis]
-
-    steps:
-      - name: Install dependencies
-        run: sudo apt-get install gcc-arm-none-eabi
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: 'true'
-      - name: Get short SHA
-        id: slug
-        run: echo "sha8=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_OUTPUT
-      - name: Arrange files
-        run: |
-          cp res/patches.db patches.db
-      - name: Build firmware
-        run: |
-          make BOARD=${{ matrix.board }} clean
-          make BOARD=${{ matrix.board }} COMPRESSION_RATIO=10
-          mv superfw.gba superfw-${{ matrix.board }}.fw
-          cp superfw.dldi.payload superfw-${{ matrix.board }}.dldi
-      - name: Upload firmware release
-        uses: actions/upload-artifact@v4
-        with:
-          name: superfw-release-${{ matrix.board }}-${{ steps.slug.outputs.sha8 }}
-          path: |
-            superfw-${{ matrix.board }}.fw
-      - name: Upload debug artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: superfw-debug-${{ matrix.board }}-${{ steps.slug.outputs.sha8 }}
-          path: |
-            superfw-${{ matrix.board }}.fw
-            directsave.elf
-            firmware.elf
-            firmware.ewram.elf
-            ingamemenu.elf
-            superfw.dldi.elf
-      - name: Upload extra artifacts
-        if: ${{ success() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: superfw-dev-${{ matrix.board }}-${{ steps.slug.outputs.sha8 }}
-          path: |
-            superfw-${{ matrix.board }}.fw
-            superfw-${{ matrix.board }}.dldi
-            patches.db
-
-  release:
-    needs: build-firmware
-    if: startsWith(github.ref, 'refs/tags/')
+  build-candidate:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout repository
+      - name: Check out repository
         uses: actions/checkout@v4
         with:
-          submodules: 'true'
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: 'superfw-release-*'
-          path: artifacts
-      - name: Create release and upload firmware
+          submodules: true
+
+      - name: Install build and test dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc gcc-arm-none-eabi lcov python3-pil
+
+      - name: Run host tests
         run: |
-          gh release create "${GITHUB_REF#refs/tags/}" \
-            --title "Release ${GITHUB_REF#refs/tags/}" \
-            --notes-from-tag \
-            artifacts/**/*.fw
+          make -C tests
+          python3 -m unittest discover -s tests -p '*_test.py'
+
+      - name: Build SuperR7 for SuperCard SD
+        run: |
+          make BOARD=sd clean
+          make BOARD=sd COMPRESSION_RATIO=10 superr7.gba
+
+      - name: Verify and package candidate
+        run: |
+          size=$(stat -c %s superr7.gba)
+          test "$size" -le 524288
+          mkdir -p dist
+          cp superr7.gba dist/superr7.gba
+          sha256sum dist/superr7.gba > dist/superr7.gba.sha256
+          printf 'size=%s\ncommit=%s\n' "$size" "$GITHUB_SHA" > dist/build-info.txt
+
+      - name: Upload release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: superr7-candidate-${{ github.sha }}
+          path: dist/*
+
+  draft-release:
+    needs: build-candidate
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: superr7-candidate-${{ github.sha }}
+          path: dist
+
+      - name: Create draft release
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft \
+            --generate-notes \
+            --title "SuperR7 $GITHUB_REF_NAME" \
+            dist/superr7.gba \
+            dist/superr7.gba.sha256 \
+            dist/build-info.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

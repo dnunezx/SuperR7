@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Danny Nunez
+# Copyright (C) 2026 Danny Nunez (dnunezx)
 
 from __future__ import annotations
 
@@ -60,10 +60,11 @@ def assert_wallpapers() -> None:
         "wallpaper-weave",
         "wallpaper-grid",
         "wallpaper-circuit",
+        "wallpaper-tech-frame",
     )
     buffers = [frame(name)[512:] for name in names]
     if len(set(buffers)) != len(names):
-        raise AssertionError("wallpaper modes did not produce four distinct frames")
+        raise AssertionError("wallpaper modes did not produce five distinct frames")
 
     background = 2
     none = buffers[0]
@@ -72,6 +73,16 @@ def assert_wallpapers() -> None:
         changed = sum(candidate[i] != background for i in background_pixels)
         if changed < 8:
             raise AssertionError(f"{name} lacks a distinct procedural pattern")
+
+    dynamic_roles = {2, 3, 4, 8, 12}
+    for name, candidate in zip(names[4:], buffers[4:]):
+        pattern_roles = {
+            candidate[i] for i in background_pixels if candidate[i] != background
+        }
+        if not pattern_roles or not pattern_roles <= dynamic_roles:
+            raise AssertionError(
+                f"{name} uses non-dynamic wallpaper colors: {sorted(pattern_roles)}"
+            )
 
 def assert_presets_and_controls() -> None:
     # Dynamic UI palette: text=0, background=2, selection=9, accent=11.

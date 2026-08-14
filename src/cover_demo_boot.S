@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Danny Nunez
+ * Copyright (C) 2026 Danny Nunez (dnunezx)
  * Standard-GBA boot wrapper for the emulator-only cover-art demo.
  */
 

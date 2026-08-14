@@ -1,4 +1,7 @@
-# SuperR7 SD Cover Art Game Plan
+# SuperR7 cover-art development history
+
+> Historical record. For current behavior, see the
+> [interface guide](../interface.md) and [cover format](../cover-format.md).
 
 ## Objective
 
@@ -33,7 +36,7 @@ grid of multiple covers.
 | 4: Browser integration | Complete | Selected covers, theme-aware placeholders, clipped selectors, and narrower Browse/Recent lists are implemented and hardware verified. |
 | 5: PC and emulator verification | Complete | A standard-GBA demo ROM now exercises the real menu in mGBA; scripted visual checks cover navigation, valid/missing/corrupt art, Browse/Recent parity, panel bounds, and stable frame swaps. |
 | 6: SuperCard SD hardware verification | Complete | Browse, Recent, rapid scrolling, booting, saving, cold boots, and permanently flashed operation passed on a physical SuperCard SD. |
-| 7: Polish and release | Split into follow-up work | Canonical cover-folder support and the portable SuperCover application are complete. The browser redesign now continues in [its own game plan](UI_REDESIGN_GAME_PLAN.md); release identity and optional conveniences remain separate. |
+| 7: Polish and release | Split into follow-up work | Canonical cover-folder support and the portable SuperCover application are complete. The browser redesign now continues in [its own development history](ui-redesign.md); release identity and optional conveniences remain separate. |
 
 ## Current project position
 
@@ -51,10 +54,14 @@ grid of multiple covers.
   project.
 - The upstream maintainer declined the cover-art feature. The resulting Phase 5
   source and hardware-passed image are now the baseline of the independent
-  **SuperR7** fork, maintained by Danny Nunez. Original GPL notices and
+  **SuperR7** fork, maintained by Danny Nunez (dnunezx). Original GPL notices and
   upstream attribution remain intact.
 - Browser UI redesign work completed on `feature/ui-browser` and is tracked in
-  [UI_REDESIGN_GAME_PLAN.md](UI_REDESIGN_GAME_PLAN.md).
+  [interface redesign history](ui-redesign.md).
+- The August 14 fixed-page navigation firmware is the current, most recent
+  hardware-validated SuperR7 version. The August 13 Tech Frame image is its
+  immediate rollback; see the [hardware-validation record](../hardware-validation.md)
+  for the exact current image hash and complete accepted lineage.
 
 ## Baseline exit checklist
 
@@ -95,7 +102,7 @@ new hosted repository remains a separate external release-engineering action.
 The UI redesign has a separate version 3 cover candidate for native 76-by-76
 artwork. It intentionally leaves this completed version 2 plan, converter,
 72-by-72 cover library, and normal firmware targets intact. The candidate is
-documented in [the version 3 format note](docs/cover-format-v3-76.md) and must
+documented in [the version 3 format](../cover-format.md) and must
 be tested from a separate cover directory and chain-loaded firmware image.
 
 ## Proposed design
@@ -196,8 +203,8 @@ Acceptance criteria:
 
 Phase 2 result:
 
-- [Version 2 `.sfcov` specification](docs/cover-format.md)
-- [Desktop converter instructions](docs/cover-converter.md)
+- [Legacy version 2 `.sfcov` specification](../legacy/cover-format-v2.md)
+- [Legacy desktop converter instructions](../legacy/cover-converter-v2.md)
 - Version 2 uses fixed 72-by-72 square covers with 1-220 BGR555 colors.
 - Palette indices 20-239 are reserved for direct framebuffer copies.
 - Exact file length and CRC-32 validation are implemented.
@@ -257,8 +264,8 @@ Phase 3 measurements for commit `85f274e1bddc122f7a1f90db79e7697379036ed5`:
 
 Verification runs:
 
-- [Phase 3 host tests](https://github.com/dnunezx/superfw/actions/runs/30867774492)
-- [Phase 3 SD firmware build and artifacts](https://github.com/dnunezx/superfw/actions/runs/30867774453)
+- [Phase 3 host tests](https://github.com/dnunezx/superr7/actions/runs/30867774492)
+- [Phase 3 SD firmware build and artifacts](https://github.com/dnunezx/superr7/actions/runs/30867774453)
 
 ### Phase 4: Browser integration
 
@@ -306,8 +313,8 @@ Phase 4 measurements for commit `5ef669eb2d7074bfd8aeca6472ad080078812c5d`:
 
 Verification runs:
 
-- [Phase 4 host tests](https://github.com/dnunezx/superfw/actions/runs/30868430594)
-- [Phase 4 SD firmware build and artifacts](https://github.com/dnunezx/superfw/actions/runs/30868430600)
+- [Phase 4 host tests](https://github.com/dnunezx/superr7/actions/runs/30868430594)
+- [Phase 4 SD firmware build and artifacts](https://github.com/dnunezx/superr7/actions/runs/30868430600)
 
 The ARM build and host tests verify the implementation and memory bounds. The
 remaining visual acceptance checks (palette appearance, flicker, and interaction
@@ -351,7 +358,7 @@ Phase 5 implementation result:
   missing and corrupt placeholders are distinct and theme-limited, and Recent
   Games renders the same Aurora cover as Browse.
 - The demo and visual gate run with the official mGBA development headless
-  frontend. See [the emulator demo guide](docs/cover-emulator-demo.md) for local
+  frontend. See [the emulator demo guide](../cover-emulator-demo.md) for local
   commands and artifact details.
 
 Phase 5 production measurements for commit
@@ -373,9 +380,9 @@ demo payload uses 222,584 bytes of EWRAM (86.60%) and 10,568 bytes of IWRAM
 
 Verification runs:
 
-- [Phase 5 host tests](https://github.com/dnunezx/superfw/actions/runs/30871187882)
-- [Phase 5 mGBA demo, visual checks, ROM, and screenshots](https://github.com/dnunezx/superfw/actions/runs/30871187871)
-- [Phase 5 production SD firmware build and artifacts](https://github.com/dnunezx/superfw/actions/runs/30871187868)
+- [Phase 5 host tests](https://github.com/dnunezx/superr7/actions/runs/30871187882)
+- [Phase 5 mGBA demo, visual checks, ROM, and screenshots](https://github.com/dnunezx/superr7/actions/runs/30871187871)
+- [Phase 5 production SD firmware build and artifacts](https://github.com/dnunezx/superr7/actions/runs/30871187868)
 
 ### Phase 6: SuperCard SD hardware verification
 
@@ -419,6 +426,15 @@ Completed portions:
 - Confirmed the final firmware works when permanently flashed.
 - Replaced the inherited interface, including the in-game menu, with the
   coherent SuperR7 card identity and shared Appearance palette.
+- Completed persistent Favorites using the same seven-row cover/list behavior
+  as Browse and Recent. Quick Launch now provides centered add/remove actions,
+  and Favorites can launch games or confirm removal with Select. The exact
+  August 10 candidate passed physical SuperCard SD testing and is archived at
+  `artifacts/phase11-favorites-hardware/`.
+- Standardized the Launch flow's Options, Advanced, and Details footer as
+  `B: BACK`. The exact August 11 Phase 13 image passed physical SuperCard SD
+  testing and is archived at `artifacts/phase13-launch-back-test/`; Phase 11
+  remains preserved as the previous rollback.
 - Finalized the SuperR7 project name, local branch, branding, recognition,
   hardware baseline, and fork-start release artifact.
 
@@ -439,8 +455,8 @@ The browser redesign is tracked separately. Other candidate feature work should
 still be evaluated in this order, without committing the roadmap to all of it
 at once:
 
-1. **Library navigation:** Favorites, alphabetical quick-jump, search, and
-   improved Recent Games controls.
+1. **Library navigation:** Alphabetical quick-jump, search, and improved Recent
+   Games controls. Persistent Favorites is complete and hardware validated.
 2. **ROM identification:** Game-code-based metadata and artwork matching that
    survives ROM filename changes.
 3. **Per-game configuration:** A clearer place for launch, patch, save, cheat,
@@ -479,7 +495,7 @@ This section is updated as Phase 1 progresses.
 | Item | Result |
 | --- | --- |
 | Upstream repository | `davidgfnet/superfw` |
-| Fork | `dnunezx/superfw` |
+| Repository | `dnunezx/superr7` |
 | Development branch | `feature/cover-art` |
 | Baseline commit | `cf09d09492525b84ac3bbd20db406805c7ce6242` |
 | Baseline measurement commit | `85673693ec3bd4ef1467104ac6603d6b7460bf4f` (documentation and CI only; firmware sources unchanged) |
@@ -491,12 +507,12 @@ This section is updated as Phase 1 progresses.
 | Main firmware after compression | 103,397 bytes |
 | EWRAM usage | 217,100 of 257,024 bytes (84.47%); 39,924 bytes remaining |
 | IWRAM usage | 11,144 of 32,768 bytes (34.01%); 21,624 bytes remaining |
-| Hardware smoke test | Pending |
+| Hardware smoke test | Superseded by the Phase 6 physical SuperCard SD verification |
 
 Baseline workflow runs:
 
-- [SD firmware build and artifacts](https://github.com/dnunezx/superfw/actions/runs/30858515467)
-- [Existing SuperFW host tests](https://github.com/dnunezx/superfw/actions/runs/30858515464)
+- [SD firmware build and artifacts](https://github.com/dnunezx/superr7/actions/runs/30858515467)
+- [Existing SuperFW host tests](https://github.com/dnunezx/superr7/actions/runs/30858515464)
 
 The final 512 KiB firmware image is the tighter constraint: only 7.5 KiB is
 currently unused. The cover implementation must therefore avoid a general image

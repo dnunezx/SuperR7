@@ -1,4 +1,8 @@
-# SuperCard SD Browser UI Redesign Game Plan
+# SuperR7 interface redesign history
+
+> Historical record. For current user-facing behavior, see the
+> [SuperR7 interface guide](../interface.md). References to `artifacts/` below
+> identify ignored local validation outputs rather than published downloads.
 
 ## Objective
 
@@ -13,19 +17,87 @@ GBA screen.
 
 Reference concept:
 
-- [Generated browser concept](docs/ui-mockups/cover-browser-concept-v1.png)
+- [Generated browser concept](../ui-mockups/cover-browser-concept-v1.png)
 - The generated concept establishes the visual direction, not final pixel
   measurements or production-ready assets.
 
 ## Current checkpoint
 
-Status as of **August 6, 2026: branded SuperR7 baseline hardware accepted;
-in-game card redesign ready for hardware testing**.
+Status as of **August 14, 2026: the fixed-page list-navigation build is the
+current and most recent hardware-validated firmware; the dynamic Tech Frame
+wallpaper build is its immediate rollback**.
+
+- Current hardware-validated firmware:
+  `superr7-page-navigation-hardware-test.gba`, 520,192 bytes (4,096 bytes
+  below the 512 KiB limit), with
+  SHA-256
+  `DCD599CD17745FB350A7176C24257377AB9B301E6C5B661B25594E3D53E5C940`.
+  It changes Browse, Recent, and Favorites to fixed seven-item pages with
+  boundary no-ops and partial final pages. The user confirmed that this exact
+  image works great on physical hardware.
+- Immediate hardware-validated rollback: `superr7.gba`, 520,192 bytes (4,096
+  bytes below the 512 KiB limit), with SHA-256
+  `63EE181F90C0FCACB0014D6F819B6994C26E2677A589C9DCC355718C9F1FAA4F`.
+  It adds the dynamic Tech Frame wallpaper while removing the rejected Ribbons
+  and Slashes options and assets.
+- Earlier hardware-validated rollback:
+  `superr7-boot-logo-v2.gba`, 519,168 bytes (5,120 bytes below the 512 KiB
+  limit), with SHA-256
+  `6DCDEA075A8CF04C8A4FF523F20628D5FF74AFF7126E3234F59A7B9E93A26BFC`.
+  It uses the supplied stacked `Super R7` artwork as a 56-by-42 1bpp mask,
+  rendered at 2x as a centered 112-by-84 logo on black, with no progress bar.
+  The exact ROM passed native mGBA framebuffer checks. The user then confirmed
+  that it booted, worked, and looked great on physical hardware.
+  The exact tested file is preserved in the workspace with the matching size
+  and SHA-256.
+
+- Earlier archived rollback:
+  `artifacts/phase13-launch-back-test/superr7-phase13-launch-back-8ca8aaf2.gba`,
+  519,168 bytes (5,120 bytes below the 512 KiB limit), with SHA-256
+  `8CA8AAF27941BAE9A1DF35D3C3E88C863CEF51B4AA5C35F1F25D780F0C808A2F`.
+  It changes the Launch flow's Options, Advanced, and Details footer from
+  `B: QUICK` to `B: BACK`. Local checks passed, and the user confirmed that
+  this exact image booted, worked correctly, and looked great on physical
+  SuperCard SD hardware. It is now the accepted Phase 13 rollback.
+
+- Previous hardware-validated firmware candidate:
+  `artifacts/phase11-favorites-hardware/superr7-phase11-favorites-cbdae08b.gba`,
+  520,704 bytes (3,584 bytes below the 512 KiB limit), with a 105,899-byte
+  ratio-10 compressed main payload and SHA-256
+  `CBDAE08B529566E37517776CA336B1FF070AEF4296ED09503E961577972C68B3`.
+  It was built from the current working tree with embedded base build ID
+  `a27602e6` and archived byte-identically after the hardware pass.
+- Favorites persist at `/.superfw/favorites.txt`. Quick Launch centers
+  `Add to Favorites` beneath `Launch game` and toggles it to
+  `Remove Favorite` after the add succeeds.
+- Favorites, Browse, and Recent share the same seven-row navigation: Up/Down
+  moves one item, Left/Right selects the first item of the adjacent fixed page,
+  boundary page inputs do nothing, and the final page may be partial.
+  Favorites uses A for the normal launch flow and Select for confirmed removal.
+- The focused Favorites, navigation, Quick Launch, loading, popup, secondary
+  screen, Phase 4, and in-game-menu checks pass. The user subsequently
+  confirmed that the exact candidate passed physical hardware testing.
+
+- Previous hardware-validated in-game-menu candidate:
+  `artifacts/phase10-ingame-menu-hardware/superr7-phase10-ingame-menu-bffca9f.gba`,
+  520,192 bytes, SHA-256
+  `BFFCA9F38B40F8920FE38BAB47A705B452C4AB4D74A2A518E2C70AAD689F0A9F`.
+- Earlier Phase 9 boot-logo candidate:
+  `releases/archive/2026-08-07-gothic-boot/superr7-phase9-gothic-boot-1eec14f.gba`,
+  518,144 bytes, SHA-256
+  `93F774D81C6DEF17125587A66B121A8CF126D87256F7F547389ACD482F49A1E5`.
+- The fixed-page navigation build is the current and most recent
+  hardware-validated firmware. The root `superr7.gba` Tech Frame build is its
+  immediate rollback, followed by the boot-logo-v2 ROM, the exact Phase 13
+  Launch Back image, and the archived Phase 11 Favorites image.
+- The earlier branded, Phase 9, Phase 10, Phase 11, Phase 13, boot-logo-v2, and
+  Tech Frame rollback images remain preserved behind the accepted fixed-page
+  navigation candidate.
 
 - The exact cleaned Phase 5 candidate passed physical SuperCard SD validation
   and is now frozen as the functional baseline for the independent **SuperR7**
-  fork, maintained by Danny Nunez.
-- Frozen baseline: `releases/phase5-hardware-baseline/SuperR7-phase5-hardware-baseline.gba`,
+  fork, maintained by Danny Nunez (dnunezx).
+- Frozen baseline: `releases/archive/2026-08-06-phase5-baseline/superr7-phase5-baseline.gba`,
   520,192 bytes, SHA-256
   `15A88B4F0F25B057ED4B93B4B0D855E7F3CFE67C0E7D0B7ADBA01261A6667A92`.
 - SuperR7 branding and recognition are applied after that frozen checkpoint.
@@ -65,9 +137,9 @@ in-game card redesign ready for hardware testing**.
 - The dock uses a dedicated 5-by-7 uppercase font so the full `FAVORITE` label
   fits its 60-pixel cell. Its icons are a star, clock, folder, and crossed
   tools, each verified as a distinct 8-by-8 native-resolution silhouette.
-- Phase 4 adds user-facing presets, independent Background, Accent, and
-  Selection controls, contrast handling, theme reset, and four procedural
-  wallpaper choices: None, Weave, Grid, and Circuit.
+- Appearance provides user-facing presets, independent Background, Accent, and
+  Selection controls, contrast handling, theme reset, and five procedural
+  wallpaper choices: None, Weave, Grid, Circuit, and Tech Frame.
 - The preset set is now ELECTRIC BLUE, MUTANT GREEN, STEALTH BLACK, and CHROME
   SILVER. ELECTRIC BLUE is the source default.
 - Hardware feedback showed that Accent and Selection colors were being muted
@@ -99,8 +171,8 @@ in-game card redesign ready for hardware testing**.
   separate the remaining information without changing the existing handlers.
 - The loading screen now follows Background, Accent, Selection, wallpaper, and
   contrast choices. It adds a theme-colored progress bar, moving highlight,
-  cover-art scan line, percentage, and clean status footer while retaining the
-  native 76-by-76 cover.
+  percentage, and clean status footer while retaining the unobstructed native
+  76-by-76 cover.
 - The cleaned refined candidate is 520,192 bytes with a 105,745-byte ratio-10
   compressed main payload, leaving 4,096 bytes below the 512 KiB limit. Its
   SHA-256 is
@@ -137,13 +209,13 @@ in-game card redesign ready for hardware testing**.
   its 78-by-78 frame at `x=3..80`, `y=32..109`.
 - Converter round trips, version isolation, overwrite protection, firmware
   validation, and the complete scripted mGBA visual suite pass locally.
-- See [the version 3 format note](docs/cover-format-v3-76.md). Physical
+- See [the production cover format](../cover-format.md). Physical
   chain-load verification passed.
 
 ### Completed glow selection
 
 - Cyan, lime, and ice-white pixel-glow mockups were generated in
-  [`docs/ui-mockups/glow-comparison`](docs/ui-mockups/glow-comparison/).
+  [glow comparison mockups](../ui-mockups/glow-comparison/).
 - All three variants now use the C renderer's one-to-two-pixel bands and were
   captured from mGBA at 240 by 160 after GBA BGR555 conversion.
 - The verifier checks exact converted palette values and proves that only the
@@ -185,8 +257,8 @@ invalid-cover states remain visually distinct.
 
 The first navigation dock maps existing functionality into four primary areas:
 
-1. **Favorites** - visible destination with an empty state; persistent
-   add/remove behavior remains a tracked follow-up.
+1. **Favorites** - persistent seven-row library with Quick Launch add/remove,
+   normal launching, confirmed removal, and an approved empty state.
 2. **Recent** - recently launched games.
 3. **Browse** - ROM and file browser.
 4. **Tools** - advanced tools, settings, and firmware information in Phase 4.
@@ -250,7 +322,7 @@ Phase 1 result:
 - Defined ready, pending, folder, missing, invalid, SD-error, unsupported,
   selected, unselected, and disabled states.
 - Documented filename clipping and existing selected-name scrolling behavior.
-- See [the native Phase 1 specification](docs/ui-phase1-spec.md).
+- See [the native Phase 1 specification](ui-phase-1-spec.md).
 
 ## Phase 2: Static mGBA renderer prototype
 
@@ -286,7 +358,7 @@ Phase 2 result:
   R7: 518,144 bytes with SHA-256
   `93EDC36DCF92D054834CE101DA735049EF3A48FA7794EF8FAC185189950FBA01`.
 - Reference captures are stored in
-  [`docs/ui-mockups/phase2`](docs/ui-mockups/phase2/).
+  [Phase 2 mockups](../ui-mockups/phase2/).
 
 ## Phase 3: Browse integration
 
@@ -356,8 +428,8 @@ Phase 4 implementation result so far:
 - Added an Appearance screen with the exact user-facing controls: Preset,
   Wallpaper, Background, Accent, Selection, Contrast, and Reset theme.
 - Added ELECTRIC BLUE, MUTANT GREEN, STEALTH BLACK, and CHROME SILVER presets
-  plus None, Weave, Grid, and Circuit wallpapers. The selected values persist
-  in settings.
+  plus None, Weave, Grid, Circuit, and Tech Frame wallpapers. The selected
+  values persist in settings.
 - Background automatically derives the screen, cards, dock, stripes, edges,
   and shadows. Accent controls the active dock item and highlights. Selection
   controls the selected game's border, fill, and shadow.
@@ -373,9 +445,11 @@ Phase 4 implementation result so far:
   muted text are derived automatically; folder amber, error red, and disabled
   gray remain protected rather than exposed as user controls.
 - Reset theme restores the current preset's full values.
-- Favorites is a visible dock destination with an empty-state screen; its
-  backing favorites library and add/remove behavior are still future work.
-- Scripted mGBA checks cover all four wallpapers, all four presets, every
+- Favorites is a working dock destination backed by
+  `/.superfw/favorites.txt`. It keeps the approved empty state, uses the same
+  seven-row cover/list presentation as Browse and Recent, and supports normal
+  launch and confirmed removal.
+- Scripted mGBA checks cover all five wallpapers, all four presets, every
   independent color control, contrast overrides, reset behavior, seven-row
   layouts, all four dock selections, and Browse/Recent cover consistency.
 - Ratio-10 measurements: 226,976-byte main binary, 110,196-byte compressed
@@ -386,9 +460,9 @@ Phase 4 implementation result so far:
 - Physical result: the user chain-loaded this exact Phase 4 candidate and
   confirmed that its dock, theme settings, and wallpaper selection controls
   work. The Stars rendering defect was found afterward.
-- Final Stars decision: remove the option rather than spend additional firmware
-  space on a wallpaper with little visible area. Existing saved Stars value 4
-  safely sanitizes to None now that four wallpaper choices remain.
+- Final Stars decision at that checkpoint: remove the option rather than spend
+  additional firmware space on a wallpaper with little visible area. The later
+  Tech Frame wallpaper now occupies saved wallpaper value 4.
 - Vibrant candidate measurements: 226,824-byte main binary, 110,150-byte
   compressed payload, and a 523,264-byte final image with 1,024 bytes free.
 - Vibrant candidate SHA-256:
@@ -401,8 +475,9 @@ Phase 4 implementation result so far:
   `B24DDBCBCA78DD1764058BAFDD715EBF984C681056BB9D67DB703862BDD6E39D`.
 - Host contrast tests and the complete native 240-by-160 mGBA sequence pass.
   The user confirmed the dock-contrast revision works correctly on hardware.
-- Deferred follow-up: Favorites currently presents its designed empty state;
-  persistent favorite storage and add/remove actions are not implemented yet.
+- Favorites result: persistent storage, add/remove actions, shared
+  navigation, focused emulator checks, and physical SuperCard SD verification
+  are complete.
 
 ## Phase 5: Secondary-screen visual consistency
 
@@ -442,9 +517,9 @@ Phase 5 implementation result:
   single centered `Launch game` action. Options, Advanced, and read-only Details
   pages progressively disclose the remaining controls and status information.
 - The loading page is theme-aware and adds an Accent fill, Selection border and
-  glow, moving bright pulse, percentage, and cover-art scan line. Scripted
-  Electric Blue, Mutant Green, and Chrome Silver captures verify that each
-  palette role changes independently and that B returns to Quick Launch.
+  glow, moving bright pulse, and percentage without drawing over the cover.
+  Scripted Electric Blue, Mutant Green, and Chrome Silver captures verify that
+  each palette role changes independently and that B returns to Quick Launch.
 - All four Phase 4/5 native visual assertion suites and all 23 Python checks
   pass.
 - Final cleaned measurements: 214,176-byte main binary, 105,745-byte compressed
@@ -459,11 +534,11 @@ Phase 5 implementation result:
   `artifacts/phase5-v4-launch-loading-hardware/superfw-phase5-v4-76-launch-loading.gba`.
 - Hardware result: the user chain-loaded this exact candidate and accepted the
   complete cleaned Phase 5 experience. It is preserved byte-for-byte in
-  `releases/phase5-hardware-baseline/`.
+  `releases/archive/2026-08-06-phase5-baseline/`.
 - The first branded SuperR7 successor carries the `SUPERR7` GBA title and
   `3deb361a` Build ID. All Phase 4/5 native visual suites, all 23 Python checks,
   and the host theme test pass. Its separate release note is under
-  `releases/superr7-start/`; physical validation of the branded successor is
+  `releases/archive/2026-08-06-initial-superr7/`; physical validation of the branded successor is
   recommended before it replaces the frozen baseline.
 
 ## Phase 6: Firmware-size and performance gate
@@ -503,11 +578,19 @@ Acceptance criteria:
 
 ## Phase 8: In-game menu card integration and legacy-theme cleanup
 
-Status: **Complete locally; exact physical hardware candidate ready**
+Status: **Complete; hardware validation passed**
 
 - Replaced the inherited logo, flat text rows, popup bands, and OBJ selection
   bar with full-width SuperR7 cards, selected-card glow, accent rails, a compact
-  header/footer, card dialogs, and dedicated RTC and savestate layouts.
+  header, card dialogs, and dedicated RTC and savestate layouts.
+- Aligned the menu text baselines with their card and field bounds, and removed
+  the `A SELECT / B BACK` footer dock.
+- The menu keeps the LCD forced blank while the first complete framebuffer is
+  rendered and while the game framebuffer is restored, then reveals each menu
+  page on VBlank to prevent a corrupted transition frame.
+- The updated in-game-menu candidate passed physical hardware validation,
+  including text alignment, footer removal, menu activation, and return to the
+  game.
 - Passed all 20 Appearance palette roles and the selected wallpaper into the
   in-game payload when a game is launched. Electric Blue, Mutant Green,
   Stealth Black, Chrome Silver, custom colors, and contrast overrides therefore
@@ -526,6 +609,9 @@ Status: **Complete locally; exact physical hardware candidate ready**
 - Hardware image:
   `artifacts/phase8-ingame-cards-hardware/superr7-phase8-ingame-cards-e696196.gba`
   (`SHA-256 DA86376417C34FC002970A4B55406C4EEC736173DC5A1EC4D2C4DBF50CF1E8F8`).
+- Hardware-validated follow-up image:
+  `artifacts/phase10-ingame-menu-hardware/superr7-phase10-ingame-menu-bffca9f.gba`
+  (`SHA-256 BFFCA9F38B40F8920FE38BAB47A705B452C4AB4D74A2A518E2C70AAD689F0A9F`).
 - All four Phase 4/5 native visual suites, the new in-game visual suite, all 23
   Python checks, the host theme test, and the normal-firmware compatibility
   build pass.
@@ -540,15 +626,21 @@ Hardware acceptance criteria:
 - Returning to the game restores its display and input state without a new
   regression.
 
-## Phase 9: SuperR7 Gothic boot splash
+## Phase 9: Historical SuperR7 Gothic boot splash
 
-Status: **Complete locally; exact physical hardware candidate ready**
+Status: **Complete; hardware validation passed; superseded August 12, 2026**
+
+This section records the archived Phase 9 candidate. Its Gothic wordmark and
+four-stage bar are no longer the active boot splash; the current replacement
+is documented in the August 12 boot-logo refresh below.
 
 - Replaced the inherited 31-by-7 SuperFW mark with the approved monochrome
   `SuperR7` Gothic wordmark, ornamental swashes, pure-black background, and a
   four-stage grayscale progress bar.
-- Preserved the approved source artwork in `res/superr7-boot-logo-source.png`
-  and credited Danny Nunez directly beside the compact boot-logo data.
+- Preserved the approved source artwork at the time and credited Danny Nunez (dnunezx)
+  directly beside the compact boot-logo data. The old source remains in Git
+  history; `res/superr7-boot-logo-source.png` now contains the active stacked
+  replacement artwork.
 - Stored the wordmark as a 72-by-22 1bpp mask and rendered it at 2x scale so
   the extra detail does not consume the bootloader safety margin.
 - Shared one renderer between the GBA and NDS paths. The first stage remains
@@ -559,7 +651,7 @@ Status: **Complete locally; exact physical hardware candidate ready**
   compressed main payload, 220,756 of 257,024 EWRAM bytes, 11,176 of 32,768
   IWRAM bytes, and a 518,144-byte final image with 6,144 bytes free.
 - Hardware image:
-  `artifacts/phase9-boot-logo-hardware/superr7-phase9-gothic-boot-1eec14f.gba`
+  `releases/archive/2026-08-07-gothic-boot/superr7-phase9-gothic-boot-1eec14f.gba`
   (`SHA-256 93F774D81C6DEF17125587A66B121A8CF126D87256F7F547389ACD482F49A1E5`).
 - The real candidate was captured in headless mGBA; its 240-by-160 framebuffer
   contains the expected black background, white logo, four grayscale bar
@@ -567,7 +659,7 @@ Status: **Complete locally; exact physical hardware candidate ready**
   visual suite, all 23 Python checks, and the normal-firmware compatibility
   link also pass.
 
-Hardware acceptance criteria:
+Historical hardware acceptance criteria:
 
 - The full wordmark and ornamental curls remain readable on the physical GBA
   display during cold boot and chain-load boot.
@@ -575,10 +667,142 @@ Hardware acceptance criteria:
 - Booting continues normally on the SuperCard SD with no delay, corruption,
   or regression before the main menu appears.
 
+## Phase 11: Persistent Favorites and shared list navigation
+
+Status: **Complete; hardware validation passed**
+
+- Added a persistent Favorites library at `/.superfw/favorites.txt`, limited
+  to 200 ROM paths.
+- Added the centered `Add to Favorites` Quick Launch action immediately below
+  `Launch game`; it toggles to `Remove Favorite` for games already in the list.
+- Kept the approved empty Favorites screen. A populated Favorites tab uses the
+  same seven-row cards, covers, title scrolling, and launch flow as Browse.
+- Unified Favorites, Browse, and Recent navigation through one list helper:
+  Up/Down moves one item, Left/Right moves seven, lists of seven or fewer stay
+  on one page, and longer lists retain a full final seven-row window.
+- A opens the normal game launch flow. Select opens a confirmation before
+  removing the selected favorite.
+- Copies paths out of cartridge SDRAM before FatFs or launch operations and
+  uses a stable removal callback, avoiding the unsafe path and delayed-callback
+  behavior found in the earlier experimental implementation.
+- Focused host and native mGBA checks cover empty, add, toggle, populated,
+  confirmed removal, Quick Launch layout, and shared navigation behavior.
+- Hardware-validated image:
+  `artifacts/phase11-favorites-hardware/superr7-phase11-favorites-cbdae08b.gba`,
+  520,704 bytes, SHA-256
+  `CBDAE08B529566E37517776CA336B1FF070AEF4296ED09503E961577972C68B3`.
+  It is byte-identical to the root image supplied for testing.
+- The user confirmed that this exact candidate passed physical SuperCard SD
+  hardware testing. It is now the accepted Phase 11 rollback source.
+
+## Phase 13: Consistent Launch Back footer
+
+Status: **Complete; hardware validation passed**
+
+- Replaced `B: QUICK` with `B: BACK` on the Launch flow's Options, Advanced,
+  and Details screens so they match the main Launch screen.
+- All 23 host tests and `git diff --check` passed before packaging.
+- Hardware-validated image:
+  `artifacts/phase13-launch-back-test/superr7-phase13-launch-back-8ca8aaf2.gba`,
+  519,168 bytes (5,120 bytes below the 512 KiB limit), SHA-256
+  `8CA8AAF27941BAE9A1DF35D3C3E88C863CEF51B4AA5C35F1F25D780F0C808A2F`.
+- The root and archived images are byte-identical. On August 11, 2026, the
+  user confirmed that this exact image booted, worked correctly, and looked
+  great on physical SuperCard SD hardware. It is now the accepted Phase 13
+  rollback; Phase 11 remains preserved as the previous rollback.
+
+## August 12, 2026: Stacked Super R7 boot-logo refresh
+
+Status: **Complete; emulator and physical hardware validation passed**
+
+- Replaced the Phase 9 Gothic wordmark with the supplied stacked `Super R7`
+  artwork and removed the four-stage grayscale progress bar.
+- Preserved the supplied 1376-by-768 source at
+  `res/superr7-boot-logo-source.png`. The conversion crops the surrounding
+  black field and unrelated lower-right sparkle before producing the compact
+  boot mask.
+- Stored the active logo as a 56-by-42 1bpp mask and rendered it at 2x, giving
+  a centered 112-by-84 monochrome mark on the native 240-by-160 GBA screen.
+- Kept the shared GBA/NDS renderer and reduced the boot palette to black and
+  white. The first-stage loader remains 428 of 1,024 bytes; the complete
+  bootloader is 3,000 of 3,072 bytes, leaving 72 bytes free.
+- Validated the exact ROM in mGBA across 12 captured frames. Every framebuffer
+  matched, used only palette indices 0 and 1 (`0x0000` and `0x7fff`), contained
+  no progress-bar pixels, and placed the visible logo at `x=64..175` and
+  `y=38..121`.
+- Hardware-validated image: `superr7-boot-logo-v2.gba`, 519,168 bytes,
+  SHA-256
+  `6DCDEA075A8CF04C8A4FF523F20628D5FF74AFF7126E3234F59A7B9E93A26BFC`.
+- On August 12, 2026, the user confirmed that this exact image booted, worked,
+  and looked great on physical hardware. No additional firmware build was
+  requested or produced after that confirmation.
+- The exact tested binary is preserved in the workspace with the matching
+  size and SHA-256. It became the current SuperR7 firmware on August 12;
+  subsequent validated images preserve it as an earlier rollback.
+
+## August 13, 2026: Dynamic Tech Frame wallpaper
+
+Status: **Complete; emulator and physical hardware validation passed**
+
+- Added Tech Frame as the fifth Appearance wallpaper alongside None, Weave,
+  Grid, and Circuit. It is drawn procedurally at the native 240-by-160
+  resolution and uses the active Background, Accent, and derived palette roles,
+  so it follows every preset and custom color choice without storing a large
+  bitmap.
+- Passed the selected wallpaper and its dynamic palette through to the in-game
+  menu, preserving the same-color appearance between the firmware and menu.
+- Recreated Ribbons and Slashes as exact native-size concepts and evaluated
+  compact 2bpp masks. Their visual result and firmware cost were not acceptable,
+  so both options, their render paths, packed assets, temporary encodings, and
+  related checks were removed completely. They do not appear in either menu and
+  require no fallback behavior.
+- After removal, the ratio-10 SD image is 520,192 bytes, leaving 4,096 bytes
+  below the 512 KiB limit instead of 512 bytes. The theme host test, all 23
+  Python checks, the complete Phase 4 native mGBA visual suite, and
+  `git diff --check` pass.
+- Hardware-validated root image: `superr7.gba`, SHA-256
+  `63EE181F90C0FCACB0014D6F819B6994C26E2677A589C9DCC355718C9F1FAA4F`.
+  On August 13, 2026, the user confirmed that this exact build works great on
+  physical hardware. It became the current accepted SuperR7 firmware and is
+  now the immediate rollback for the August 14 fixed-page navigation build.
+
+## August 14, 2026: Fixed-page list navigation
+
+Status: **Complete; host and physical hardware validation passed**
+
+- Replaced inherited item-offset paging with fixed seven-item pages across
+  Favorites, Recent, and Browse.
+- Left and Right select the first item of the previous or next page. Paging at
+  the beginning or end of a list does nothing, and the final page may contain
+  fewer than seven items.
+- Up and Down cross page boundaries cleanly. Horizontal page input takes
+  priority over an accidental diagonal, and folder returns plus Recent or
+  Favorites deletion realign the selection to a fixed page boundary.
+- The focused navigation test passed with strict compiler warnings and with
+  address and undefined-behavior sanitizers. The SuperR7 UI source passed ARM
+  syntax checking, all 23 Python host tests passed, and `git diff --check`
+  passed before packaging.
+- Hardware-validated image: `superr7-page-navigation-hardware-test.gba`,
+  520,192 bytes (4,096 bytes below the 512 KiB limit), SHA-256
+  `DCD599CD17745FB350A7176C24257377AB9B301E6C5B661B25594E3D53E5C940`.
+- On August 14, 2026, the user confirmed that this exact image works great on
+  physical SuperCard SD hardware. It is now the current accepted SuperR7
+  firmware; the August 13 Tech Frame image is its immediate rollback.
+
+
+Retained regression checklist:
+
+- Add and remove a game through the centered Quick Launch action.
+- Launch a game from Favorites and return to the firmware normally.
+- Remove a favorite through the Favorites Select confirmation.
+- Preserve additions, removals, and ordering across reboot.
+- Keep Up/Down and Left/Right behavior coherent with more than seven favorites,
+  including a partially filled final page.
+
 ## Definition of done
 
 The redesign is complete when the approved original card interface is used by
-Browse, Recent, Settings, Tools, the in-game menu, and their normal secondary screens; at least
-five game rows remain readable; the SD firmware stays within its size and memory
-limits; and emulator plus physical-hardware testing show no regression in cover
-art, navigation, launching, or saves.
+Favorites, Browse, Recent, Settings, Tools, the in-game menu, and their normal
+secondary screens; at least five game rows remain readable; the SD firmware
+stays within its size and memory limits; and emulator plus physical-hardware
+testing show no regression in cover art, navigation, launching, or saves.
