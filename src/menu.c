@@ -3198,6 +3198,7 @@ void menu_demo_init() {
   reload_theme();
 #ifdef UI_BROWSER_V2
   ui_theme_reset(UiThemeElectricBlue);
+  ui_selection_color = UiColorRed;
   ui_browser_v2_load_palette(MEM_PALETTE);
 #endif
   smenu.menu_tab = MENUTAB_ROMBROWSE;
@@ -4113,6 +4114,14 @@ static void keypress_menu_browse(unsigned newkeys) {
       spop.selector = 0;
     }
 #else
+#ifdef UI_BROWSER_V2
+    if (newkeys & KEY_BUTTSEL) {
+      ui_selection_color = ui_selection_color == UiColorRed ?
+                           UiColorCyan : UiColorRed;
+      ui_browser_v2_load_palette(MEM_PALETTE);
+    }
+    else
+#endif
     if (newkeys & KEY_BUTTA) {
       t_centry *e = sdr_state->fileorder[smenu.browser.selector];
       unsigned length = strlen(e->fname);
@@ -4144,10 +4153,12 @@ static void keypress_menu_browse(unsigned newkeys) {
         spop.pop_num = POPUP_FWFLASH;
         spop.selector = 0;
       }
+#ifndef UI_BROWSER_V2
     } else if (newkeys & KEY_BUTTSEL) {
       spop.pop_num = POPUP_FILE_MGR;
       spop.anim = 0;
       spop.selector = 0;
+#endif
     }
 #endif
   }

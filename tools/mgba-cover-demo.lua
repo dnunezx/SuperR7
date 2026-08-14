@@ -107,18 +107,8 @@ callbacks:add("frame", function()
   elseif frame == 740 then
     release(C.GBA_KEY.R)
   elseif frame == 820 then
-    shot("dock-settings")
-  elseif frame == 825 then
-    press(C.GBA_KEY.R)
-  elseif frame == 830 then
-    release(C.GBA_KEY.R)
-  elseif frame == 835 then
-    press(C.GBA_KEY.R)
-  elseif frame == 840 then
-    release(C.GBA_KEY.R)
-  elseif frame == 920 then
     shot("dock-tools")
-  elseif frame == 930 then
+  elseif frame == 830 then
     local marker = io.open(output .. "complete.txt", "w")
     marker:write("mGBA cover demo completed\n")
     marker:close()

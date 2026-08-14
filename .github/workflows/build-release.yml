@@ -7,7 +7,7 @@ on:
     branches:
       - main
     tags:
-      - 'v*'
+      - 'Luna*'
 
 permissions:
   contents: write
@@ -40,9 +40,15 @@ jobs:
           size=$(stat -c %s superr7.gba)
           test "$size" -le 524288
           mkdir -p dist
-          cp superr7.gba dist/superr7.gba
-          sha256sum dist/superr7.gba > dist/superr7.gba.sha256
-          printf 'size=%s\ncommit=%s\n' "$size" "$GITHUB_SHA" > dist/build-info.txt
+          if [[ "$GITHUB_REF" == refs/tags/Luna* ]]; then
+            asset="SuperR7-SD-${GITHUB_REF_NAME}.gba"
+          else
+            asset="superr7.gba"
+          fi
+          cp superr7.gba "dist/$asset"
+          sha256sum "dist/$asset" > "dist/$asset.sha256"
+          printf 'asset=%s\nsize=%s\ncommit=%s\n' \
+            "$asset" "$size" "$GITHUB_SHA" > dist/build-info.txt
 
       - name: Upload release candidate
         uses: actions/upload-artifact@v4
@@ -52,7 +58,7 @@ jobs:
 
   draft-release:
     needs: build-candidate
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/Luna')
     runs-on: ubuntu-24.04
 
     steps:
@@ -64,13 +70,14 @@ jobs:
 
       - name: Create draft release
         run: |
+          asset="SuperR7-SD-${GITHUB_REF_NAME}.gba"
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --draft \
             --generate-notes \
             --title "SuperR7 $GITHUB_REF_NAME" \
-            dist/superr7.gba \
-            dist/superr7.gba.sha256 \
+            "dist/$asset" \
+            "dist/$asset.sha256" \
             dist/build-info.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

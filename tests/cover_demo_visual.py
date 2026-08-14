@@ -14,8 +14,8 @@ PANEL_IMAGE = (6, 35, 78, 107)
 DOCK_BOX = (0, 144, 240, 160)
 FRAME_SIZE = 512 + 240 * 160
 GLOW_VARIANTS = {
-    "red": (0xFF3344, 0x7A101D),
-    "cyan": (0x22D3EE, 0x07586A),
+    "red": (0xFF2D45, 0xBF2030),
+    "cyan": (0x00E5FF, 0x00A8B8),
 }
 
 
@@ -224,8 +224,8 @@ def main() -> None:
     if changed_pixels(long_name_start.crop((91, 102, 232, 119)),
                       long_name_scrolled.crop((91, 102, 232, 119))) < 20:
         raise AssertionError("selected long filename did not scroll after its delay")
-    if shifted.getpixel((89, 130)) != selected_fill:
-        raise AssertionError("selection did not stay on the seventh row when the window advanced")
+    if shifted.getpixel((89, 10)) != selected_fill:
+        raise AssertionError("selection did not start on the first row of the next fixed page")
     if changed_pixels(last_row.crop((83, 0, 240, 144)),
                       shifted.crop((83, 0, 240, 144))) < 100:
         raise AssertionError("eight-entry navigation did not advance the seven-row window")
