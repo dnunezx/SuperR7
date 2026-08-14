@@ -1,214 +1,131 @@
 # SuperR7
 
-SuperR7 is an independent GPL firmware for SuperCard GBA flash carts,
-maintained by **Danny Nunez (dnunezx)**. It begins from the hardware-validated Phase 5
-cover-art and card-interface work developed from David Guillen Fandos's
-[SuperFW](https://github.com/davidgfnet/superfw).
+<p align="center">
+  <img src="res/superr7-boot-logo-source.png" alt="SuperR7 logo" width="620">
+</p>
 
-SuperR7 keeps SuperFW's original license, copyright notices, technical credit,
-and compatible `/.superfw/` SD-card layout. The projects have independent
-roadmaps and releases; the upstream SuperFW repository is retained as a
-read-only source for selectively reviewed fixes.
+> **YOUR SUPERCARD. POWERED UP.**
+>
+> Box art. Favorites. Seven-game pages. Custom colors. Same proven SuperFW engine
+> underneath.
 
-The original SuperFW website and documentation remain useful for inherited
-firmware behavior: https://superfw.davidgf.net/
+SuperR7 is an independent, GPL-licensed fork of
+[SuperFW](https://github.com/davidgfnet/superfw) for **SuperCard GBA flash
+carts**. It keeps the serious firmware technology and gives it a new
+game-library experience built for the GBA's 240-by-160 screen.
 
-Documentation
--------------
+Developed and hardware-tested by **Danny Nunez (dnunezx)** on SuperCard SD.
 
-- [Documentation index](docs/README.md)
-- [Current SuperR7 interface](docs/interface.md)
-- [Cover format and converter](docs/cover-format.md)
-- [Hardware validation record](docs/hardware-validation.md)
-- [Development history](docs/history/README.md)
+## The power-up
 
-Building SuperR7
-----------------
+- **Big cover art** — native 76-by-76 `.sfcov` covers.
+- **Seven games at once** — cover-focused rows with long-title support.
+- **Page controls** — Up/Down moves one game; Left/Right changes
+  seven-game pages and selects the first game.
+- **Four-item dock** — Favorites, Recent, Browse, and Tools.
+- **Real Favorites** — save up to 200 games and launch them normally.
+- **Quick Launch** — launch now or open Options, Advanced, and Details.
+- **Make it yours** — four presets, custom colors, contrast control, and five
+  wallpapers: None, Weave, Grid, Circuit, and Tech Frame.
+- **Matching in-game menu** — your selected colors and wallpaper follow you
+  into the game.
 
-The primary SuperCard SD target uses the native 76-by-76 cover format and the
-current SuperR7 interface:
+## See it in action
+
+| Cover-powered library | Quick Launch and Favorites |
+| :---: | :---: |
+| ![SuperR7 seven-row cover library](docs/screenshots/library-browser.png) | ![SuperR7 Quick Launch Add to Favorites action](docs/screenshots/quick-launch-favorites.png) |
+| **Tech Frame Appearance** | **Matching in-game menu** |
+| ![SuperR7 Tech Frame Appearance settings](docs/screenshots/appearance-tech-frame.png) | ![SuperR7 matching in-game menu](docs/screenshots/in-game-menu.png) |
+
+SuperFW supplies the proven foundation. SuperR7 turns it into a cover-powered
+library.
+
+SuperR7 keeps SuperFW's history, GPL license, credits, and compatible
+`/.superfw/` SD-card layout. The projects have different interfaces,
+roadmaps, and releases.
+
+## Add box art with SuperCover
+
+[**SuperCover**](https://github.com/dnunezx/SuperCover) makes the cover setup
+easy:
+
+1. Pick your GBA ROM folder.
+2. Review the artwork matches.
+3. Export to `/.superfw/covers/` on your SuperCard SD.
+
+That's it. SuperCover scans without modifying your ROMs, creates SuperR7's
+76-by-76 cover files, and gives them the filenames the firmware expects.
+
+Want full manual control? Use the included
+[cover converter](docs/cover-converter.md).
+
+## Original power under the hood
+
+SuperR7 retains SuperFW's major features:
+
+- SDHC and exFAT support.
+- WAITCNT, save, IRQ, and RTC patching.
+- SRAM save protection and optional Direct-Saving.
+- In-game saves, savestates, cheats, reset, RTC, and return-to-menu.
+- Game Boy and Game Boy Color emulation through Goomba Color.
+- Per-game settings, patch cache, cheat files, and emulator support.
+
+## Controls
+
+| Button | Library action |
+| --- | --- |
+| Up / Down | Previous or next game |
+| Left / Right | Previous or next seven-game page |
+| A | Open Quick Launch |
+| B | Go back |
+| Select | Remove a game from Favorites after confirmation |
+
+## Hardware checkpoint
+
+The latest recorded build passed physical **SuperCard SD** testing on
+August 14, 2026.
+
+- Firmware size: **520,192 bytes**
+- Flash limit: **524,288 bytes**
+- Free space: **4,096 bytes**
+- Tested feature: fixed seven-game page navigation
+
+Every new binary is a new candidate. Chain-load it before flashing it. Never
+flash an unverified development build. Exact hashes and rollback images are in
+the [hardware-validation record](docs/hardware-validation.md).
+
+## Get it
+
+Versioned firmware downloads belong on
+[GitHub Releases](https://github.com/dnunezx/SuperR7/releases). Verify the
+published checksum, chain-load the `.gba` file, and test it on your hardware
+before considering an internal-flash installation.
+
+Need installation or recovery details? Use the inherited
+[SuperFW installation guide](https://superfw.davidgf.net/docs/install/flash/).
+
+## Build it
 
 ```sh
 make BOARD=sd COMPRESSION_RATIO=10 superr7.gba
 ```
 
-The output is `superr7.gba`. Chain-load every new build on hardware before
-considering an internal-flash update. The inherited `superfw.gba` target is
-retained for compatibility and legacy-guard verification.
+Output: `superr7.gba`. Building is not hardware validation—test every new
+image.
 
-The current hardware-validated image is the August 14, 2026 fixed-page
-navigation build, `superr7-page-navigation-hardware-test.gba`: 520,192 bytes
-with SHA-256
-`DCD599CD17745FB350A7176C24257377AB9B301E6C5B661B25594E3D53E5C940`.
-Validated binaries remain local until they are attached to a versioned GitHub
-release; generated and test artifacts are intentionally excluded from the
-source tree. See the [hardware validation record](docs/hardware-validation.md)
-for the exact lineage, rollback hashes, and publication policy.
+## Learn more
 
+- [Interface and controls](docs/interface.md)
+- [Cover format](docs/cover-format.md)
+- [Documentation index](docs/README.md)
+- [Development history](docs/history/README.md)
 
-Installation
-------------
+## Credits and license
 
-Check https://superfw.davidgf.net/docs/install/flash/ for more details.
+SuperR7-specific work is copyright (C) 2026 **Danny Nunez (dnunezx)**.
+SuperR7 is based on SuperFW, primarily written by **David Guillen Fandos
+(`davidgf`)**. Upstream authorship and copyright notices are preserved.
 
-The firmware can be chain-loaded using another firmware (ie. the default
-SuperCard firmware or SCFW) and loaded as a regular game. It can also be
-installed on the internal flash device. Installing it enables some nice
-features such as SDHC and exFAT compatibility.
-
-To install the firmware you can simply load it first, and then use SuperR7
-to flash itself on the flash. You will need to enable flashing in the Info
-tab and then pick the .fw file and flash it. It is strongly recommended to
-reboot your GBA after flashing.
-
-Flashing is also possible using an NDS. This is particularly useful if you
-_brick_ your Supercard (ie. interrupting flashing, low battery conditions
-and similar situations could cause a bad flash). You will need an NDS device
-and a Slot-1 cart as well. Download the .nds ROM for your Slot-1 cart at
-https://github.com/davidgfnet/superfw-nds-flasher-tool/releases/ and launch
-it with your Supercard on your Slot-2. You should be able to flash (as well
-as backup) your flash.
-
-GB/GBC Emulation
-----------------
-
-GameBoy and GameBoy Color ROMs can be played by using the built-in Goombacolor
-emulator binary (the Lite build doesn't ship any emulator though).Picking any
-.gb/.gbc file will load the emulator and the ROM and start its execution.
-
-Other devices can also be played as long as the right emulator is installed in
-the SD card (and supported by SuperR7).
-
-Check https://superfw.davidgf.net/docs/usermanual/emulators/ for details.
-
-ROM patching
-------------
-
-The firmware contains a patch database to patch several features. A custom
-database can also be loaded from the SD card and used instead (so more games
-and improvements can be added). The patches contain information about:
-
- - WaitCNT patches: Also called white/black screen patches, prevent games from
-   updating the WAITCNT waitstates (the supercard has a slow memory). Without
-   a correct patch the game won't even boot.
- - Flash/EEPROM offsets: Indicate where the relevant storage routines are so
-   that they can be patched and converted to SRAM storage.
- - IRQ handler patches: Used to patch user IRQ handler routine and install a
-   custom one. Used to enable in-game menu.
- - RTC patches: Used for games that contained an RTC IC in theri cart, to keep
-   track of time (both time and date). There's only a handful such ROMs.
-
-More information at https://superfw.davidgf.net/docs/usermanual/patches/
-
-These patches are generated mostly automatically, check out the patch repo at:
-https://github.com/davidgfnet/gba-patch-gen
-It is also possible to use the web-based patch generator for better patches:
-https://patchtool.superfw.davidgf.net/
-
-In-game menu
-------------
-
-SuperR7's in-game menu uses the same card interface, Appearance colors,
-contrast handling, and procedural wallpaper selected in the main firmware. It
-allows users to pause the current game and perform actions such as:
-
-  - Resuming and resetting the game
-  - Going back to the SuperR7 menu (without having to reboot your GBA)
-  - Handling saves (for games that allow saving)
-  - Creating and restoring savestates
-  - Applying/using cheat codes
-  - Changing the RTC time (for games that use an RTC)
-
-This menu is a bit of a hack that requires patching the ROM to work. For this
-reason, some games won't work well with it or will suffer from bugs (usually
-graphical bugs). In this case it is advised to not use the in-game menu.
-
-Many graphical glitches will result in the screen being "offseted" to the
-left/right/up/down. In many cases this is not an issue (besides making it
-harder for the user to see and play) and it goes away when entering a new
-zone/level/menu. This is due to the GBA featuring some "write-only" registers,
-that is, registers that can be written but never read back. For this reason
-we cannot properly save and restore said registers.
-
-Favorites
----------
-
-Open a GBA game from Browse to reach Quick Launch. The centered action beneath
-`Launch game` reads `Add to Favorites`; after the game is added, the same action
-reads `Remove Favorite`.
-
-The Favorites dock tab uses the same seven-row list and cover presentation as
-Browse and Recent. Up/Down moves one game, Left/Right changes fixed pages and
-selects the first game on the new page, A opens the normal launch flow, and
-Select removes the selected favorite after a confirmation. The approved empty
-Favorites screen remains unchanged when the list has no entries.
-
-Favorites persist in `/.superfw/favorites.txt` and support up to 200 ROM paths.
-The August 10 Favorites build passed its focused host and mGBA checks and was
-then confirmed working on physical SuperCard SD hardware.
-
-Saving games
-------------
-
-Save games are stored in the cart's SRAM and preserved by the cart battery
-(note that if the battery is dead the game will be lost). On reboot SuperR7
-will write the savegame to the SD card to preserve it and allow loading
-another save game.
-
-When using the in-game menu, you might enter the menu and select any of the
-saving options, which will write the save to the SD card. This is a good
-way to save your games if you prefer to manually handle save files (ie.
-disabling autosave and manually choosing when to save).
-
-For Flash-based games (around 300 games) and EEPROM-based games (around 1400
-games) it is possible to patch games so that they write directly to the SD
-save game, this is called Direct-Saving mode. This makes saving more reliable
-(no need for a battery!) and simpler to use (no need to reboot to ensure
-saving or using the in-game menu). Games that use Flash or EEPROM will display
-an option for direct-saving (this is the default choice in Auto mode).
-
-Files and configuration on the SD card
---------------------------------------
-
-SuperR7 intentionally stores compatible firmware files under `/.superfw` at
-the root of the card, so existing SuperFW installations and saves continue to
-work. The following files are usually created:
-
- - .superfw/settings.txt: User settings, loaded on startup.
- - .superfw/ui-settings.txt: UI settings, loaded on startup.
- - .superfw/recent.txt: Recently played ROMs, in order.
- - .superfw/favorites.txt: Favorite ROM paths, in display order.
- - .superfw/pending-save.txt: SRAM save information (temp file).
- - .superfw/pending-sram-test.txt: SRAM test flag (temp file).
-
-Other noteworthy paths:
-
- - .superfw/config/: Per-ROM load configuration.
- - .superfw/patches/: Patch cache (created by PatchEngine).
- - .superfw/cheats/: Cheat database, contains .cht files.
- - .superfw/emulators/: Emulator ROMs, used to play other device's ROMs.
-
-Limits
-------
-
-The following restrictions apply to the firmware due to memory/storage/cpu
-constraints:
-
- - Maximum ROM size: 32MiB (Supercard's memory size)
- - File path and name limit: 255 utf-8 bytes (not exactly characters!)
- - Maximum number of files+dirs in a directory: 16384
-
-Licenses
---------
-
-SuperR7-specific work is copyright (C) 2026 Danny Nunez (dnunezx). SuperR7 is
-based on SuperFW, primarily written by David Guillen Fandos (`davidgf`), whose existing
-copyright and attribution are retained. The firmware is distributed under the
-GNU General Public License, version 3 or later. See [LICENSE](LICENSE) and
-[CREDITS.md](CREDITS.md).
-Some components use third party code, such as: nanoprintf (public domain),
-heapsort (3-BSD), fatfs (1-BSD-like) and apultra/upkr (only used at
-build-time). Some linkerscript/crt0 code was adapted from AntonioND's work
-under CC0.
-
-
+Licensed under the **GNU General Public License, version 3 or later**. See
+[LICENSE](LICENSE) and [CREDITS.md](CREDITS.md).
