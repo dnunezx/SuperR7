@@ -10,11 +10,11 @@
 > underneath.
 
 SuperR7 is an independent, GPL-licensed fork of
-[SuperFW](https://github.com/davidgfnet/superfw) for **SuperCard GBA flash
+[SuperFW](https://github.com/davidgfnet/superfw) for **SuperCard SD GBA flash
 carts**. It keeps the serious firmware technology and gives it a new
 game-library experience built for the GBA's 240-by-160 screen.
 
-Developed and hardware-tested by **Danny Nunez (dnunezx)** on SuperCard SD.
+Developed by **(dnunezx)**.
 
 ## The power-up
 
@@ -41,7 +41,7 @@ Developed and hardware-tested by **Danny Nunez (dnunezx)** on SuperCard SD.
 SuperFW supplies the proven foundation. SuperR7 turns it into a cover-powered
 library.
 
-SuperR7 keeps SuperFW's history, GPL license, credits, and compatible
+SuperR7 keeps SuperFW's features, GPL license, credits, and compatible
 `/.superfw/` SD-card layout. The projects have different interfaces,
 roadmaps, and releases.
 
@@ -54,7 +54,7 @@ easy:
 2. Review the artwork matches.
 3. Export to `/.superfw/covers/` on your SuperCard SD.
 
-That's it. SuperCover scans without modifying your ROMs, creates SuperR7's
+That's it. SuperCover scans your ROMs, creates SuperR7's
 76-by-76 cover files, and gives them the filenames the firmware expects.
 
 Want full manual control? Use the included
@@ -80,20 +80,6 @@ SuperR7 retains SuperFW's major features:
 | A | Open Quick Launch |
 | B | Go back |
 | Select | Remove a game from Favorites after confirmation |
-
-## Hardware checkpoint
-
-The latest recorded build passed physical **SuperCard SD** testing on
-August 14, 2026.
-
-- Firmware size: **520,192 bytes**
-- Flash limit: **524,288 bytes**
-- Free space: **4,096 bytes**
-- Tested feature: fixed seven-game page navigation
-
-Every new binary is a new candidate. Chain-load it before flashing it. Never
-flash an unverified development build. Exact hashes and rollback images are in
-the [hardware-validation record](docs/hardware-validation.md).
 
 ## Get it
 
@@ -125,7 +111,7 @@ image.
 
 SuperR7-specific work is copyright (C) 2026 **Danny Nunez (dnunezx)**.
 SuperR7 is based on SuperFW, primarily written by **David Guillen Fandos
-(`davidgf`)**. Upstream authorship and copyright notices are preserved.
+(davidgf)**. Upstream authorship and copyright notices are preserved.
 
 Licensed under the **GNU General Public License, version 3 or later**. See
 [LICENSE](LICENSE) and [CREDITS.md](CREDITS.md).
